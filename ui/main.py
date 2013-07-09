@@ -136,7 +136,7 @@ class CustomWindow:
                 if 'Error' in ret:
                     self.showErrorDialog(ret)
                 from core.fwCore import core
-                print pm.getURL()
+                #print pm.getURL()
                 core.loadWSDL(pm.getURL())
                 #Load notebook
                 self.initNotebook()

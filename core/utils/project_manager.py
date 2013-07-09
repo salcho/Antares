@@ -79,12 +79,16 @@ class projMan:
 	    return msg
         
     def projList(self):
-        if not self.PATH:
-	        from core.fwCore import core
-                self.PATH = core.SELF_PATH
-	os.chdir(self.PATH)
-	print os.getcwd()
-        return os.listdir(PROJ_DIR)
+	try:
+	        if not self.PATH:
+		        from core.fwCore import core
+                	self.PATH = core.SELF_PATH
+		os.chdir(self.PATH)
+		print os.getcwd()
+	        return os.listdir(PROJ_DIR)
+	except OSError as e:
+		os.mkdir(PROJ_DIR)
+		return []
     
     def getCurrentSettings(self):
         return self.currSettings
