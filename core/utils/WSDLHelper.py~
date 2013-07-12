@@ -44,7 +44,7 @@ class WSDLHelper(object):
         #ports = (port, [(name, [args])])
         #ports = (port, [name, [(type, name)]])
         try:
-            msg = ''
+            msg = 'Error'
             if url.startswith('file'):
                 self._cllib = urllib2.urlopen(pm.getURL())
             else:
@@ -52,8 +52,7 @@ class WSDLHelper(object):
             #sc_import = Import('http://www.w3.org/)
             #sc_doctor = ImportDoctor(sc_import)
             print 'line1'
-	    #self._client = Client(url, autoblend=True, faults=False, cachingpolicy=1)
-	    self._client = Client(url)
+            self._client = Client(url, autoblend=True, faults=False, cachingpolicy=1)
             print 'line2'
             self.setup()
             #self.fixHeaders(url)

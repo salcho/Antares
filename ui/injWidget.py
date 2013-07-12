@@ -6,8 +6,9 @@ Created on Feb 20, 2013
 
 import gtk
 from core.fwCore import core
+from ui.IWidget import IWidget
 
-class injWidget:
+class injWidget(IWidget):
 	def __init__(self):
 		self.hbox = gtk.HBox(True, 0)
 
@@ -27,16 +28,22 @@ class injWidget:
 	
 	def start(self):
 		if core.iswsdlhelper():
-                	ops = core.iswsdlhelper().getMethods()
-			#TODO: Adding widgets to frame
-			sc = gtk.GtkScrolledWindow()
-                        for op in ops:
+			ops = core.iswsdlhelper().getMethods()
+			sw = gtk.ScrolledWindow()
+			sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+			vbtnbox = gtk.VButtonBox()
+			vbtnbox.set_layout(gtk.BUTTONBOX_START)
+			vbtnbox.set_spacing(1)
+			for op in ops:
 				chkbtn = gtk.CheckButton(op)
 				chkbtn.connect("toggled", self.opSelected, chkbtn.get_label())
-				vbox.pack_start(chkbtn, False, False, 0)
-				self.frame_ops.add(chkbtn)
+				vbtnbox.add(chkbtn)
+			sw.add_with_viewport(vbtnbox)
+			self.frame_ops.add(sw)
 
 	def opSelected(self, widget, action):
-		if widget.get_active():
+		if widget.get_active() and action not in self.selectedOps:
 			self.selectedOps.append(action)
-			print self.selectedOps
+		if not widget.get_active() and action in self.selectedOps:
+			self.selectedOps.remove(action)
+		print self.selectedOps

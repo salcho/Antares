@@ -15,6 +15,7 @@ class Core(object):
     
     def __init__(self):
         self.wsdlhelper = None
+        
         self.gui = mainUI()
     
     def startUI(self):
@@ -27,7 +28,9 @@ class Core(object):
             self.wsdlhelper = wsdlhelper
         ret = self.wsdlhelper.loadWSDL(url)
         if 'Error' in ret:
-            raise Exception(ret)
+            self.gui.showError(ret)
+            return False
+        return True
     
     def iswsdlhelper(self):
         if not self.wsdlhelper:

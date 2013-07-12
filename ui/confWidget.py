@@ -3,12 +3,15 @@ Created on Aug 10, 2012
 
 @author: "Santiago Diaz M."
 '''
+from core.fwCore import core
+from core.utils.project_manager import pm
+from ui.IWidget import IWidget
 import gobject
 import logging
 import pygtk
 import gtk
-
-class cfgWidget:
+from gtk import gdk
+class cfgWidget(IWidget):
     
     '''
     This Widget handles the configuration tab, it's responsible for loading and saving 
@@ -16,10 +19,10 @@ class cfgWidget:
     
     '''
     
-    
     def __init__(self):
+        self.wsdl = None
+
         self.prjName= None
-        self.localPath = None
         self.uri= None
         self.IP = None
         self.port = None
@@ -33,17 +36,17 @@ class cfgWidget:
         self.fBinding = None
         self.fAuth = None
         self.bCombobox = None
+        self.sCombobox = None
         
         self.prjName = gtk.Entry(0)
         self.prjName.set_editable(False)
-        self.localPath = gtk.Label('')
         self.uri = gtk.Entry(0)
         self.uri.set_editable(False)
-        self.authType = gtk.Label('Options combobox')
+        self.authType = gtk.Label('')#########
         self.user = gtk.Entry(0)
-        self.user.set_editable(False)
+        self.user.set_editable(True)
         self.pwd = gtk.Entry(0)
-        self.pwd.set_editable(False)
+        self.pwd.set_editable(True)
     
         #Project frame
         self.fProj = gtk.Frame("Project")
@@ -76,12 +79,27 @@ class cfgWidget:
         self.servHeader.set_editable(False)
         hostInfoTable.attach(self.servHeader, 1,2,2,3)
         self.fSettings.add(hostInfoTable)
-        
-        #Default binding frame
-	#TODO: Add default binding feature
-        self.fBinding = gtk.Frame("Default binding")
-        self.bCombobox = gtk.combo_box_new_text()
-        self.bCombobox.append_text('')
+
+        #Default service frame
+        fService = gtk.Frame("Default service")
+        self.sCombobox = gtk.combo_box_entry_new_text()
+        self.wsdl = core.iswsdlhelper()
+        if self.wsdl:
+            self.sCombobox.append_text('')
+            for service in self.wsdl.getServices():
+                self.sCombobox.append_text(service)
+                self.sCombobox.child.connect('changed', self.changeService)
+        self.sCombobox.set_active(0)
+        fService.add(self.sCombobox)
+        #Default port frame
+        self.fBinding = gtk.Frame("Default port")
+        self.bCombobox = gtk.combo_box_entry_new_text()
+        if self.wsdl:
+            binds = self.wsdl.getBindings()
+            self.bCombobox.append_text('')
+            for bind in binds:
+                self.bCombobox.append_text(bind.name)
+                self.bCombobox.child.connect('changed', self.changeBind)
         self.bCombobox.set_active(0)
         self.fBinding.add(self.bCombobox)
         
@@ -98,7 +116,7 @@ class cfgWidget:
         
         #HBox
         saveButton = gtk.Button("Save", gtk.STOCK_SAVE)
-        saveButton.connect("clicked", self.saveSettings, None)
+        saveButton.connect("clicked", self.saveSettings)
         hbox = gtk.HBox(False, 0)
         hbox.pack_end(saveButton, False, False, 0)
         
@@ -107,6 +125,7 @@ class cfgWidget:
         self.vbox = gtk.VBox(False, 0)
         self.vbox.pack_start(self.fProj, False, False, 0)
         self.vbox.pack_start(self.fSettings, False, False, 0)
+        self.vbox.pack_start(fService, False, False, 0)
         self.vbox.pack_start(self.fBinding, False, False, 0)
         self.vbox.pack_start(self.fAuth, False, False, 0)
         self.vbox.pack_start(hbox, False, False, 0)
@@ -116,23 +135,91 @@ class cfgWidget:
         return self.vbox
     
     #TODO
-    def saveSettings(self, widget):
-        pass
-    
-    #TODO
-    def viewWSDL(self):
-        pass
+    def viewWSDL(self, widget, action):
+        popup = gtk.Window()
+        popup.set_title( "WSDL" )
+        popup.set_modal( True )
+        popup.resize(600,800)
+        popup.set_type_hint( gtk.gdk.WINDOW_TYPE_HINT_DIALOG )
+        popup.connect( "destroy", lambda *w:popup.destroy() )
+        vb = gtk.VBox(False, 2)
+        frame = gtk.Frame('WSDL Contents')
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        buff = gtk.TextBuffer()
+        buff.set_text(pm.getWSDLContents())
+        textview = gtk.TextView(buffer=buff)
+        textview.set_editable(False)
+        textview.set_wrap_mode(gtk.WRAP_NONE)
+        textview.set_justification(gtk.JUSTIFY_LEFT)
+        textview.set_cursor_visible(True)
+        sw.show_all()
+        sw.add_with_viewport(textview)
+        sw.set_size_request(400, -1)
+        vb.pack_start(sw, True, True, 0)
+        btn = gtk.Button('Close', gtk.STOCK_CLOSE)
+        btn.connect('clicked', lambda *w: popup.destroy() )
+        vb.pack_start(btn, False, False, 0)
+        frame.add(vb)
+        popup.add(frame)
+        popup.show_all()
+        
+    def saveSettings(self, w):
+        d = {}
+        d['name']  = self.prjName.get_text()
+        d['url'] = self.uri.get_text()
+        d['hostname'] = self.IP.get_text()
+        d['port'] = self.port.get_text()
+        d['header'] = self.servHeader.get_text()
+        d['user'] = self.user.get_text()
+        d['pwd'] = self.pwd.get_text()
+        pm.saveProject(d)
+        
+    def changeBind(self, entry):
+        self.wsdl.setPort(entry.get_text())
+    def changeService(self, entry):
+        self.wsdl.setService(entry.get_text())
     
     def fillProject(self, dict):
-        self.prjName.set_text(dict['name'])
-        self.uri.set_text(dict['url'])
+        if dict.has_key('name'):
+            if dict['name']:
+                self.prjName.set_text(dict['name'])
+            else:
+                self.prjName.set_text('')
+        if dict.has_key('url'):
+            if dict['url']:
+                self.uri.set_text(dict['url'])
+            else:
+                self.uri.set_text('')
+        if dict.has_key('user'):
+            if dict['user']:
+                self.user.set_text(dict['user'])
+            else:
+                self.user.set_text('')
+        if dict.has_key('pwd'):
+            if dict['pwd']:
+                self.pwd.set_text(dict['pwd'])
+            else:
+                self.pwd.set_text('')
+        
     
     def fillServer(self, dict):
-        self.IP.set_text(dict['hostname'])
-        self.port.set_text(str(dict['port']))
-        self.servHeader.set_text(dict['header'])
-
-
+        if dict.has_key('hostname'):
+            if dict['hostname']:
+                self.IP.set_text(dict['hostname'])
+            else:
+                self.IP.set_text('')
+        if dict.has_key('port'):
+            if dict['port']:
+                self.port.set_text(str(dict['port']))
+            else:
+                self.port.set_text('')
+        if dict.has_key('header'):
+            if dict['header']:
+                self.servHeader.set_text(dict['header'])
+            else:
+                self.servHeader.set_text('')
+        
 '''
     def bNameChange(self, w):
         model = w.get_model()
@@ -186,23 +273,6 @@ class cfgWidget:
             self._wsdldict = settings['wsdl']
             self._authdict = settings['auth']
         self.refresh()
-        
-    def saveSettings(self, *args):
-        #Refresh dictionaries
-        self._wsdldict['url']  = self.uri.get_text()
-        self._wsdldict['ip'] = self.IP.get_text()
-        self._wsdldict['port'] = self.port.get_text()
-        self._wsdldict['path'] = self.localPath.get_text()
-        self.SSLcallback(None, None)
-        self._authdict['type'] = self.authType.get_text()
-        self._authdict['user'] = self.user.get_text()
-        self._authdict['pwd'] = self.pwd.get_text()
-        
-        #Tell workspace director
-        wd.setDicts(self._wsdldict, self._authdict)
-        #Persist
-        wd.saveProject()
-        #injWdgt.getOpts()
 
     
     def SSLcallback(self, w, data):

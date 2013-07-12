@@ -13,9 +13,12 @@ class mainUI(object):
         self.cw = None
         
     def start(self):
-        cw = CustomWindow()
-        cw.getWindow().show()
+        self.cw = CustomWindow()
+        self.cw.getWindow().show()
         gtk.main()
+        
+    def showError(self, txt):
+        self.cw.showErrorDialog(txt)
         
     
 class CustomWindow:
@@ -25,8 +28,10 @@ class CustomWindow:
         self.actionGroup = None
         self.currProject = None
         self.notebook = None
+        self.vbox = None
         
         self._window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self._window.set_title('Antares')
         self._window.resize(1000,450)
         self._window.connect('delete_event',lambda w: gtk.main_quit)
         self._window.connect('destroy', gtk.main_quit)
@@ -81,6 +86,7 @@ class CustomWindow:
         self.vbox.show_all()
         self._window.set_position(gtk.WIN_POS_CENTER)
         self._window.add(self.vbox)
+        self._window.show_all()
     
     def createProject(self, action):
         #TODO: Support auth
@@ -127,20 +133,26 @@ class CustomWindow:
                 b = gtk.CheckButton(projs.pop())
                 b.connect("toggled", self.projSelected, b.get_label())
                 vbox.pack_start(b, True, True, 0)
+            chkbtn = gtk.CheckButton('Read WSDL from file?')
+            chkbtn.connect("toggled", self.readFrom)
+            chkbtn.set_active(True)
             frame.add(vbox)
             dialog.vbox.pack_start(frame, True, True, 0)
+            dialog.vbox.pack_start(chkbtn, True, True, 0)
             dialog.show_all()
             rsp = dialog.run()
             if rsp == gtk.RESPONSE_OK:
                 ret = pm.loadProject(self.currProject)
+                if chkbtn.get_active():
+                    self.currProject = 'file://' + pm.getWSDLPath()
+                else:
+                    self.currProject = pm.getURL()
                 if 'Error' in ret:
                     self.showErrorDialog(ret)
+                #Create WSDLHelper object
                 from core.fwCore import core
-                #print pm.getURL()
-                core.loadWSDL(pm.getURL())
-                #Load notebook
-                self.initNotebook()
-                self.addNotebook()
+                if core.loadWSDL(self.currProject):
+                    self.addNotebook()
                 self.vbox.show_all()
             dialog.destroy()
         else:
@@ -150,31 +162,62 @@ class CustomWindow:
             dialog.destroy()
             
     def addNotebook(self):
-	#TODO: WTF is going on with added labels?????
-        print len(self.vbox.get_children())
-        if len(self.vbox.get_children()) == 3:
-            self.vbox.pack_start(self.notebook, True, True, 0)
+        if not self.notebook:
+            self.initNotebook()
         else:
+            self.notebook.destroy()
+            self.initNotebook()
             children = self.vbox.get_children()
-            children.pop()
             self.vbox.remove(children.pop())
-            self.vbox.pack_start(self.notebook, True, True, 0)
-            print self.vbox.get_children()
-        
+        self.vbox.pack_start(self.notebook, True, True, 0)
+
     def initNotebook(self):
         from ui.fwNotebook import mainNotebook
         nt = mainNotebook()
         from core.fwCore import core
-	if core.iswsdlhelper():
-		#Get settings, populate notebook
-        	nt.populate(pm.getCurrentSettings(), core.getServerInfo())
-        self.notebook = nt.getNotebook()
-    
+        if core.iswsdlhelper():
+            #Get settings, populate notebook
+            nt.populate(pm.getCurrentSettings(), core.getServerInfo())
+            self.notebook = nt.getNotebook()
+
     def projSelected(self, widget, action):
         self.currProject = action
-    
-    def deleteProject(self):
+
+    def readFrom(self, widget):
         pass
+    
+    def deleteProject(self, widget):
+        dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+        frame = gtk.Frame("Select project to delete")
+        frame.set_shadow_type(gtk.SHADOW_ETCHED_IN)
+        projs = pm.projList()
+        vbox = gtk.VBox(True, 0)
+        if projs:
+            vbox.pack_start(gtk.Label(pm.name), True, True, 0)
+            vbox = gtk.VBox(True, 0)
+            if len(projs) > 1:
+                group = gtk.RadioButton(group = None, label = None)
+                for proj in projs:
+                    b = gtk.RadioButton(group, proj)
+                    b.connect("toggled", self.toDelete, proj)
+                    b.set_active(False)
+                    vbox.pack_start(b, True, True, 0)
+            else:
+                b = gtk.CheckButton(projs.pop())
+                b.connect("toggled", self.toDelete, b.get_label())
+                vbox.pack_start(b, True, True, 0)
+            frame.add(vbox)
+            dialog.vbox.pack_start(frame, True, True, 0)
+            dialog.show_all()
+            rsp = dialog.run()
+            if rsp == gtk.RESPONSE_OK:
+                pm.deleteProject(self.todelete)
+            dialog.destroy()
+        else:
+            dialog.destroy()
+            
+    def toDelete(self, w, name):
+        self.todelete = name
     
     def saveProject(self):
         pass

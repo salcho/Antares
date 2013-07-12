@@ -8,6 +8,8 @@ import gtk
 from ui.confWidget import cfgWidget
 from ui.TestRequestWidget import TestRequestWidget
 from ui.injWidget import injWidget
+from ui.analyzeWidget import analyzeWidget
+from ui.bfWidget import bfWidget
 
 class mainNotebook(gtk.Notebook):
     
@@ -28,14 +30,22 @@ class mainNotebook(gtk.Notebook):
             conf.fillProject(proj)
             conf.fillServer(server)
         self.notebook.append_page(conf.getWidget(), gtk.Label('Settings'))
-	#Test wdgt
-	testwgt = TestRequestWidget()
-	testwgt.start()
-	self.notebook.append_page(testwgt.getWidget(), gtk.Label('Test Rx'))
-	#Inj wdgt
-	injwgt = injWidget()
-	injwgt.start()
-	self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injection'))
+        #Test wdgt
+        testwgt = TestRequestWidget()
+        testwgt.start()
+        self.notebook.append_page(testwgt.getWidget(), gtk.Label('Replay'))
+        #Inject wdgt
+        injwgt = injWidget()
+        injwgt.start()
+        self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injection'))
+        #Analyze wdgt
+        anawgt = analyzeWidget()
+        anawgt.start()
+        self.notebook.append_page(anawgt.getWidget(), gtk.Label('Analyze'))
+        #BF wdgr
+        bfwgt = bfWidget()
+        bfwgt.start()
+        self.notebook.append_page(bfwgt.getWidget(), gtk.Label('BruteForce'))
         
     def getNotebook(self):
         return self.notebook
