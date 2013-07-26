@@ -4,10 +4,10 @@ Created on Jan 20, 2013
 @author: Santiago Diaz - salchoman@gmail.com
 '''
 
-from suds.client import Client
 from core.utils.project_manager import project_manager
 from core.data import logger
 from core.exceptions import antaresUnknownException
+from suds.client import Client
 from suds.sax.text import Raw
 from suds import WebFault
 from suds import null
@@ -32,8 +32,8 @@ class WSDLHelper(object):
 
     
 	def __init__(self):
-		logging.basicConfig(level=logging.DEBUG)
-	        logging.getLogger('suds.client').setLevel(logging.DEBUG)
+		#logging.basicConfig(level=logging.DEBUG)
+	        #logging.getLogger('suds.client').setLevel(logging.DEBUG)
 	        self._client = None
 		# client lib, used when loading wsdl from file
 	        self._cllib = None
@@ -42,6 +42,7 @@ class WSDLHelper(object):
 	        self.serviceName = ''
 	        self.portName = ''
 		self.is_loaded = False
+		logger.debug("WSDLHelper object instansiated")
 
 	def loadWSDL(self, url):
 		"""
@@ -56,11 +57,12 @@ class WSDLHelper(object):
 			msg = ''
 			if url.startswith('file'):
 				self._cllib = urllib2.urlopen(project_manager.getURL())
+				logger.info("Loaded wsdl from local path %s" % project_manager.getWSDLPath())
 			else:
-				self._cllib = urllib2.urlopen(url)
-				#self._client = Client(url, autoblend=True, faults=False, cachingpolicy=1)
-				self._client = Client(url, faults=False)
-				self.setup()
+				self._cllib = urllib2.urlopen(project_manager.getURL())
+				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
+			self._client = Client(url, faults=False)
+			self.setup()
 		except URLError:
 			msg =  "Error: Can't connect to " + url
 		except exceptions.ValueError:
@@ -74,7 +76,7 @@ class WSDLHelper(object):
 			self.is_loaded = True
 			logger.info("Success loading WSDL from %s" % url)
 		finally:
-			if not is_loaded:
+			if not self.is_loaded:
 				logger.error("Failed loading WSDL from %s" % url)
 			return msg
 
@@ -83,7 +85,7 @@ class WSDLHelper(object):
 		Setup some control variables 
 		"""
         	self.serviceName = self._client.sd[0].service.name
-	        self.portName = self._client.sd[0].ports[0][0].name
+		self.portName = self._client.sd[0].ports[0][0].name
 
 	"""
 	def fixHeaders(self, url):

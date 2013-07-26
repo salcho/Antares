@@ -12,8 +12,9 @@ from suds.xsd.sxbasic import *
 class bfWidget(IWidget):
     def __init__(self):
         self.vbox = None
-        self.treestore = None
-        self.treeview = None
+        self.treestore = gtk.TreeStore(bool, str, str)
+        self.tmsort = gtk.TreeModelSort(self.treestore)
+	self.treeview = gtk.TreeView(self.tmsort)
         self.selected = []
     
     def start(self):
@@ -21,16 +22,11 @@ class bfWidget(IWidget):
         from core.fwCore import core
         wsdl = core.iswsdlhelper()
         if wsdl:
-            self.treestore = gtk.TreeStore(bool, str, str)
             for op in wsdl.getMethods():
                 piter = self.treestore.append(None, [ False, op, None])
-                #for i in wsdl.getParams(op):
                 elem = None
-                #params = wsdl.get
                 for x in wsdl.getParams(op):
                         self.treestore.append(piter, [False, None, x])
-                tmsort = gtk.TreeModelSort(self.treestore)
-                self.treeview = gtk.TreeView(tmsort)
                 tvcolumns={}
                 cells={}
                 i=0

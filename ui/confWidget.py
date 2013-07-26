@@ -4,7 +4,7 @@ Created on Aug 10, 2012
 @author: "Santiago Diaz M."
 '''
 from core.fwCore import core
-from core.utils.project_manager import pm
+from core.utils.project_manager import project_manager
 from ui.IWidget import IWidget
 import gobject
 import logging
@@ -147,7 +147,7 @@ class cfgWidget(IWidget):
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         buff = gtk.TextBuffer()
-        buff.set_text(pm.getWSDLContents())
+        buff.set_text(project_manager.getWSDLContents())
         textview = gtk.TextView(buffer=buff)
         textview.set_editable(False)
         textview.set_wrap_mode(gtk.WRAP_NONE)
@@ -173,7 +173,7 @@ class cfgWidget(IWidget):
         d['header'] = self.servHeader.get_text()
         d['user'] = self.user.get_text()
         d['pwd'] = self.pwd.get_text()
-        pm.saveProject(d)
+        project_manager.saveProject(d)
         
     def changeBind(self, entry):
         self.wsdl.setPort(entry.get_text())

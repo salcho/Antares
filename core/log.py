@@ -18,4 +18,5 @@ for handler in HANDLERS:
 	handler.setFormatter(FORMATTER)
 	LOGGER.addHandler(handler)
 
-LOGGER.setLevel(logging.CRITICAL)
+LOGGER.setLevel(logging.DEBUG)
+LOGGER.debug("Logging facility initiated")

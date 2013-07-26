@@ -7,7 +7,7 @@ Created on Feb 12, 2013
 import gtk
 from bs4 import BeautifulSoup
 from core.fwCore import core
-from core.utils.project_manager import pm
+from core.utils.project_manager import project_manager
 from ui.IWidget import IWidget
 
 class TestRequestWidget(IWidget):

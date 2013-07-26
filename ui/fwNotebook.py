@@ -10,6 +10,7 @@ from ui.TestRequestWidget import TestRequestWidget
 from ui.injWidget import injWidget
 from ui.analyzeWidget import analyzeWidget
 from ui.bfWidget import bfWidget
+from ui.loggerWidget import loggerWidget
 
 class mainNotebook(gtk.Notebook):
     
@@ -46,6 +47,10 @@ class mainNotebook(gtk.Notebook):
         bfwgt = bfWidget()
         bfwgt.start()
         self.notebook.append_page(bfwgt.getWidget(), gtk.Label('BruteForce'))
+	#Log wdgt
+	logwgt = loggerWidget()
+	logwgt.start()
+	self.notebook.append_page(logwgt.getWidget(), gtk.Label('Log'))
         
     def getNotebook(self):
         return self.notebook

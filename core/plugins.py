@@ -6,8 +6,13 @@ Created on Feb 28, 2013
 
 class PluginManager(object):
     
+    PLUG_DIR = "core/plugins"
+
     def __init__(self):
         self.loadedPlugins = []
+
+    def loadDefault(self):
+	
         
     def addPlugin(self, classPath):
         

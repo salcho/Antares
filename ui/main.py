@@ -129,7 +129,7 @@ class CustomWindow:
 		frame.set_shadow_type(gtk.SHADOW_ETCHED_IN)
 		projs = project_manager.projList()
 		if projs:
-			self.vbox.pack_start(gtk.Label(project_manager.name), True, True, 0)
+			#self.vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
 			vbox = gtk.VBox(True, 0)
 			if len(projs) > 1:
 		        	group = gtk.RadioButton(group = None, label = None)
@@ -142,28 +142,30 @@ class CustomWindow:
 		        	b = gtk.CheckButton(projs.pop())
 		        	b.connect("toggled", self.projSelected, b.get_label())
 		        	vbox.pack_start(b, True, True, 0)
-		chkbtn = gtk.CheckButton('Read WSDL from file?')
-		chkbtn.connect("toggled", self.readFrom)
-		chkbtn.set_active(True)
-		frame.add(vbox)
-		dialog.vbox.pack_start(frame, True, True, 0)
-		dialog.vbox.pack_start(chkbtn, True, True, 0)
-		dialog.show_all()
-		rsp = dialog.run()
-		if rsp == gtk.RESPONSE_OK:
-			ret = project_manager.loadProject(self.currProject)
-		        if chkbtn.get_active():
-		        	self.currProject = 'file://' + project_manager.getWSDLPath()
-		        else:
-				self.currProject = project_manager.getURL()
-		        if 'Error' in ret:
-				self.showErrorDialog(ret)
+			chkbtn = gtk.CheckButton('Read WSDL from file?')
+			chkbtn.connect("toggled", self.readFrom)
+			chkbtn.set_active(True)
+			frame.add(vbox)
+			dialog.vbox.pack_start(frame, True, True, 0)
+			dialog.vbox.pack_start(chkbtn, True, True, 0)
+			dialog.show_all()
+			rsp = dialog.run()
+			if rsp == gtk.RESPONSE_OK:
+				ret = project_manager.loadProject(self.currProject)
+				if 'Error' in ret:
+					self.showErrorDialog(ret)
 
-		        #Create WSDLHelper object
-		        from core.fwCore import core
-		        if core.loadWSDL(self.currProject):
-				self.addNotebook()
-		        self.vbox.show_all()
+		        	if chkbtn.get_active():
+		        		self.currProject = 'file://' + project_manager.getWSDLPath()
+			        else:
+					self.currProject = project_manager.getURL()
+
+		        	#Create WSDLHelper object
+			        from core.fwCore import core
+			        if core.loadWSDL(self.currProject):
+					self.addNotebook()
+			        	self.vbox.show_all()
+			
 			dialog.destroy()
 		else:
 			dialog.vbox.pack_start(gtk.Label("No projects to load in current workspace"), True, True, 0)
@@ -203,7 +205,7 @@ class CustomWindow:
 		projs = project_manager.projList()
 		vbox = gtk.VBox(True, 0)
 		if projs:
-			vbox.pack_start(gtk.Label(project_manager.name), True, True, 0)
+			vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
 			vbox = gtk.VBox(True, 0)
 			if len(projs) > 1:
 		        	group = gtk.RadioButton(group = None, label = None)
@@ -222,6 +224,7 @@ class CustomWindow:
 			rsp = dialog.run()
 			if rsp == gtk.RESPONSE_OK:
 		        	project_manager.deleteProject(self.todelete)
+				self.showMessageDialog("Project deleted")
 			dialog.destroy()
 		else:
 			dialog.destroy()
@@ -238,9 +241,9 @@ class CustomWindow:
 	'''
                     #Create/reload notebook
                     if len(self.vbox.get_children()) == 2:
-                        self.vbox.pack_start(gtk.Label(project_manager.name), True, True, 0)
+                        self.vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
                     else:
                         self.vbox.remove(self.vbox.get_children().pop())
-                        self.vbox.pack_start(gtk.Label(project_manager.name), True, True, 0)
+                        self.vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
                     self.vbox.show_all()
                     '''
