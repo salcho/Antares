@@ -16,12 +16,10 @@ class analyzeWidget(IWidget):
 		self.vbox = None
 		self.oCombobox = None
 		self.wsdl = None
-		self.opSelected = None
+		self.selected_op = None
 		self.sw = None
 		
-
 	def start(self):
-		self.opSelected = ''
 		self.vbox = gtk.VBox()
 		frame = gtk.Frame('Methods')
 		frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
@@ -43,26 +41,25 @@ class analyzeWidget(IWidget):
 		index = w.get_active()
 		if index:
 			op = model[index][0]
-			if op != self.opSelected or not self.opSelected:
-				self.opSelected = op
-				print self.opSelected
+			if op != self.selected_op or self.selected_op == '':
+				self.selected_op = op
 				self.renderInfo()
 			
 	def renderInfo(self):
 		if self.sw:
 			self.sw.destroy()
-		self.sw = gtk.ScrolledWindow()
-		self.sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+		sw = gtk.ScrolledWindow()
+		sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		frame = gtk.Frame("Properties")
-		table = fwTable(self.wsdl.getParamsSchema(self.opSelected), self.wsdl.getParamsNames(self.opSelected))
-		#for schema in self.wsdl.getParamsSchema(self.opSelected):
+		table = fwTable(self.wsdl.getParamsSchema(self.selected_op), self.wsdl.getParamsNames(self.selected_op))
+		#for schema in self.wsdl.getParamsSchema(self.selected_op):
 		#	if schema.children() != []:
 		#		table = fwTable(schema.children())
 		#	else:
 		#		table = fwTable([schema])
 		frame.add(table.getWidget())
-		self.sw.add_with_viewport(frame)
-		self.sw.show_all()
+		sw.add_with_viewport(frame)
+		sw.show_all()
 		self.vbox.pack_start(self.sw, True, True, 0)
 		self.vbox.show_all()	
 						
