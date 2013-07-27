@@ -87,6 +87,7 @@ class injWidget(IWidget):
 		if wsdl:
 			for child in self.frame_params.get_children():
 				self.frame_params.remove(child)
+			self.frame_params.set_label("Parameters")
 			ops = wsdl.getParamsNames(opName)
 			sw = gtk.ScrolledWindow()
 			sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
