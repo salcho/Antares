@@ -6,11 +6,13 @@ Created on Aug 10, 2012
 from core.fwCore import core
 from core.utils.project_manager import project_manager
 from ui.IWidget import IWidget
+from bs4 import BeautifulSoup
 import gobject
 import logging
 import pygtk
 import gtk
 from gtk import gdk
+
 class cfgWidget(IWidget):
     
     '''
@@ -147,7 +149,8 @@ class cfgWidget(IWidget):
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         buff = gtk.TextBuffer()
-        buff.set_text(project_manager.getWSDLContents())
+	soup = BeautifulSoup(project_manager.getWSDLContents())
+        buff.set_text(soup.prettify())
         textview = gtk.TextView(buffer=buff)
         textview.set_editable(False)
         textview.set_wrap_mode(gtk.WRAP_NONE)
