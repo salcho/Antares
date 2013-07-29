@@ -109,13 +109,7 @@ class projMan:
         	return self.currSettings['url']
     
 	def getWSDLPath(self):
-<<<<<<< HEAD
-		path  = paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.proj_name + os.path.sep + wsdl_name
-		return path
-			
-=======
 		return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.proj_name + os.path.sep + wsdl_name
->>>>>>> f08b2345b35b38d039bd4b601733b2beb203be37
     
 	def getSettingsPath(self):
         	return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.currSettings['name'] + os.path.sep + settings_name
