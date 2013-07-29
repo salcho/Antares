@@ -91,8 +91,8 @@ class projMan:
 		fh.write(pickle.dumps(self.currSettings))
         
 	def projList(self):
-		path = paths['main_path'] + os.path.sep + paths['project_dir']
-		if not os.exists(path):
+		path = paths['main_path'] + os.path.sep + paths['projects_dir']
+		if not os.path.exists(path):
 			os.makedirs(path)
 		return os.listdir(path)
     
