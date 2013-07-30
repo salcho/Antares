@@ -25,6 +25,15 @@ def checkDependencies():
 		logger.critical(msg)
 		failed_deps += 1
 
+	try:
+		import pyxb
+		logger.info("Success loading: [('pyxb', %s)]" % pyxb.__version__)
+	except ImportError:
+		msg = "Antares couldn't find pyxb third-party library "
+		msg += "which will generate XML datatypes. "
+		logger.critical(msg)
+		failed_deps += 1
+		
 	if failed_deps:
 		raise antaresDependenciesException("%d dependencies aren't met" % failed_deps)
 		

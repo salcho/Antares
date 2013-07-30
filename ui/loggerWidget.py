@@ -2,6 +2,7 @@
 
 import gtk
 from ui.IWidget import IWidget
+from core.data import logger
 
 #TODO: Implement file-like thread to show logging!
 class loggerWidget(IWidget):

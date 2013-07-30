@@ -94,6 +94,9 @@ class TestRequestWidget(IWidget):
 		if core.iswsdlhelper():
 			wsdl = core.iswsdlhelper()
 			xml = wsdl.sendRaw(self.opName, buf.get_text(start, end))
+			while gtk.events_pending():
+				gtk.main_iteration(False)
+
 			buf = self.TVRp.get_buffer()
 			buf.set_text(str(xml))
 

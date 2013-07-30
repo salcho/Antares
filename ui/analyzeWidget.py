@@ -48,18 +48,13 @@ class analyzeWidget(IWidget):
 	def renderInfo(self):
 		if self.sw:
 			self.sw.destroy()
-		sw = gtk.ScrolledWindow()
-		sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+		self.sw = gtk.ScrolledWindow()
+		self.sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		frame = gtk.Frame("Properties")
 		table = fwTable(self.wsdl.getParamsSchema(self.selected_op), self.wsdl.getParamsNames(self.selected_op))
-		#for schema in self.wsdl.getParamsSchema(self.selected_op):
-		#	if schema.children() != []:
-		#		table = fwTable(schema.children())
-		#	else:
-		#		table = fwTable([schema])
 		frame.add(table.getWidget())
-		sw.add_with_viewport(frame)
-		sw.show_all()
+		self.sw.add_with_viewport(frame)
+		self.sw.show_all()
 		self.vbox.pack_start(self.sw, True, True, 0)
 		self.vbox.show_all()	
 						
