@@ -79,10 +79,10 @@ class CustomWindow():
 		self.uiManager.add_ui_from_string(uidesc)
 		# Main VBox
 		self.vbox = gtk.VBox(False, 0)
-		menu_bar = self.uiManager.get_widget('/MenuBar')
-		self.vbox.pack_start(menu_bar, False, False, 0)
-		toolbar = self.uiManager.get_widget('/ToolBar')
-		self.vbox.pack_start(toolbar, expand=False)
+		self.menu_bar = self.uiManager.get_widget('/MenuBar')
+		self.vbox.pack_start(self.menu_bar, False, False, 0)
+		self.toolbar = self.uiManager.get_widget('/ToolBar')
+		self.vbox.pack_start(self.toolbar, expand=False)
 		self.vbox.show_all()
 		self._window.set_position(gtk.WIN_POS_CENTER)
 		self._window.add(self.vbox)
@@ -179,8 +179,13 @@ class CustomWindow():
 			else:
 				self.notebook.destroy()
 				self.initNotebook()
-				children = self.vbox.get_children()
-				self.vbox.remove(children.pop())
+				
+				# Delete and restore main vbox. Is there a better way to do this?
+				for child in self.vbox.get_children():
+					self.vbox.remove(child)
+				self.vbox.pack_start(self.menu_bar, False, False, 0)
+				self.vbox.pack_start(self.toolbar, expand=False)
+				
 			self.vbox.pack_start(self.notebook, True, True, 0)
 
 	def initNotebook(self):

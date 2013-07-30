@@ -26,6 +26,8 @@ from core.data import DEFAULT_HEXBINARY_VALUE
 #from core.data import DEFAULT_NOTATION_VALUE
 from core.data import DEFAULT_STRING_VALUE
 from core.data import DEFAULT_TIME_VALUE
+from core.data import DEFAULT_INTEGER_VALUE
+from core.data import DEFAULT_LONG_VALUE
 
 from suds.client import Client
 from suds.sax.text import Raw
@@ -135,23 +137,23 @@ class WSDLHelper(object):
 			logger.info("Success getting sample data from WS")
 			return (self._client.messages['tx'], self._client.messages['rx'])
 
-	def getParamObjs(self, opName, params=None):
+	def getParamObjs(self, opName):
 		"""
 		Return parameters and sample data to be sent to the specified operation in the form of a dictionary
 		"""
 
 		tosend = {}
-		target_params = set()
+		#target_params = set()
 		try:
+			"""
 			if params and len(params) > 0:
 				for name, elem in self.getParams(opName):
 					if name in params:
 						target_params.add((name, elem))
 			else:
 				target_params = self.getParams(opName) 
-			
-			for name, elem in target_params:
-				print elem.cache.values()[0].translate('antares')
+			"""
+			for name, elem in self.getParams(opName):
 				# Simple types
 				if str(elem.type[0]) == 'string':
 					tosend[name] = DEFAULT_STRING_VALUE
@@ -168,19 +170,29 @@ class WSDLHelper(object):
 					tosend[name] = DEFAULT_DATE_VALUE
 				# Complex types
 				else:
-					param = self._client.factory.create('{' + elem.type[1] + '}' + elem.type[0])
-					for key in param.__keylist__:
-						# TODO: How to know type value?
-						#param[key] = DEFAULT_UNKNOWN_VALUE
-						print param[key]
-						tosend[name] = param
-			
+					enums = self.findEnumerations(elem.type)
+					if len(enums) > 0:
+						for enum in enums:
+							tosend[name] += enum + '|'
 				
 		except Exception as e:
 			print 'getParamObjs @ WSDLHelper: ' + str(e)
 			tosend = {}
 		return tosend
 
+	def findEnumerations(self, type):
+		"""
+		This function receives an element type (That is: type[0] -> name, type[1] -> namespace)
+		It will find if it corresponds to enumeration values and return all possible values
+		This function could work as a generic factory in the future, but that's to be seen
+		"""
+		
+		ret = set()
+		category = self._client.factory.create('{' + type[1] + '}' + type[0])
+		for key in category.__keylist__:
+			ret.add(getattr(category, key))
+		return ret
+	
 	def getParams(self, opName):
 		"""
         Return parameter tuples (name, element) of selected operation
