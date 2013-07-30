@@ -7,12 +7,34 @@ Created on Jan 20, 2013
 from core.utils.project_manager import project_manager
 from core.data import logger
 from core.exceptions import antaresUnknownException
+
+from core.data import DEFAULT_ANYURI_VALUE
+from core.data import DEFAULT_BASE64BINARY_VALUE
+from core.data import DEFAULT_BOOLEAN_VALUE
+from core.data import DEFAULT_DATE_VALUE
+from core.data import DEFAULT_DATETIME_VALUE
+from core.data import DEFAULT_DECIMAL_VALUE
+from core.data import DEFAULT_DOUBLE_VALUE
+from core.data import DEFAULT_DURATION_VALUE
+from core.data import DEFAULT_FLOAT_VALUE
+from core.data import DEFAULT_GDAY_VALUE
+from core.data import DEFAULT_GMONTH_VALUE
+from core.data import DEFAULT_GMONTHDAY_VALUE
+from core.data import DEFAULT_GYEAR_VALUE
+from core.data import DEFAULT_GYEARMONTH_VALUE
+from core.data import DEFAULT_HEXBINARY_VALUE
+#from core.data import DEFAULT_NOTATION_VALUE
+from core.data import DEFAULT_STRING_VALUE
+from core.data import DEFAULT_TIME_VALUE
+
 from suds.client import Client
 from suds.sax.text import Raw
 from suds import WebFault
 from suds import null
+
 from urllib2 import URLError
 from urlparse import urlparse
+
 import exceptions
 import urllib2
 import os
@@ -20,13 +42,7 @@ import logging
 
 # TODO: Terminar tipos de datos!!! http://www.w3.org/TR/xmlschema-2/#built-in-datatypes
 CONTENT_TYPE_EXCEPTION = "Cannot process the message because the content type"
-DEFAULT_STRING_VALUE = 'antares'
-DEFAULT_UNKNOWN_VALUE = 'UNKNOWN'
-DEFAULT_DECIMAL_VALUE = 1.0
-DEFAULT_BOOLEAN_VALUE = 1
-DEFAULT_INTEGER_VALUE = 10
-DEFAULT_LONG_VALUE = 99999
-DEFAULT_DATE_VALUE = '12/12/1990'
+
 
 class WSDLHelper(object):
 
@@ -87,28 +103,10 @@ class WSDLHelper(object):
 		self.serviceName = self._client.sd[0].service.name
 		self.portName = self._client.sd[0].ports[0][0].name
 
-	"""
-	def fixHeaders(self, url):
-	try:
-	    port, methods = self._client.sd[0].ports[0]
-	    name, args = methods[0]
-	    res = getattr(self._client.service, name)()
-	    print res
-	except Exception as e:
-	    txt = str(e)
-	    if CONTENT_TYPE_EXCEPTION in txt:
-		types = txt.split("'")
-		#TODO: Delete
-		#print 'type2: ' + types[3]
-		self._client.set_options(headers={'Content-Type':types[3]})
-	    print type(e)
-	    print e
-	    return False
-	else:
-	    return True
-	"""
-
 	def getMethods(self):
+		"""
+		Return all methods
+		"""
 		rsp = []
 		for sd in self._client.sd:
 			if sd.service.name == self.serviceName:
@@ -121,6 +119,7 @@ class WSDLHelper(object):
 	def getRqRx(self, opName):
 		"""
 		Craft and send a test request to the specified operation
+		Return request template + response
 		"""
 		try:
 			tosend = self.getParamObjs(opName)
@@ -136,16 +135,24 @@ class WSDLHelper(object):
 			logger.info("Success getting sample data from WS")
 			return (self._client.messages['tx'], self._client.messages['rx'])
 
-	def getParamObjs(self, opName):
+	def getParamObjs(self, opName, params=None):
 		"""
 		Return parameters and sample data to be sent to the specified operation in the form of a dictionary
 		"""
 
 		tosend = {}
+		target_params = set()
 		try:
-			for name, elem in self.getParams(opName):
+			if params and len(params) > 0:
+				for name, elem in self.getParams(opName):
+					if name in params:
+						target_params.add((name, elem))
+			else:
+				target_params = self.getParams(opName) 
+			
+			for name, elem in target_params:
+				print elem.cache.values()[0].translate('antares')
 				# Simple types
-				# TODO: Set default type values: Enum, DateTime, Single
 				if str(elem.type[0]) == 'string':
 					tosend[name] = DEFAULT_STRING_VALUE
 				elif str(elem.type[0]) == 'decimal':
@@ -164,8 +171,11 @@ class WSDLHelper(object):
 					param = self._client.factory.create('{' + elem.type[1] + '}' + elem.type[0])
 					for key in param.__keylist__:
 						# TODO: How to know type value?
-						param[key] = DEFAULT_UNKNOWN_VALUE
+						#param[key] = DEFAULT_UNKNOWN_VALUE
+						print param[key]
 						tosend[name] = param
+			
+				
 		except Exception as e:
 			print 'getParamObjs @ WSDLHelper: ' + str(e)
 			tosend = {}
@@ -173,7 +183,7 @@ class WSDLHelper(object):
 
 	def getParams(self, opName):
 		"""
-        Return parameter names of selected operation
+        Return parameter tuples (name, element) of selected operation
         """
 		for sd in self._client.sd:
 			for port, methods in sd.ports:
@@ -195,6 +205,9 @@ class WSDLHelper(object):
 		return ret
 	
 	def getParamsNames(self, opName):
+		"""
+		Return parameter names. Should this be deleted?
+		"""
 		ret = []
 		if self.getParams(opName):
 			for name, elem in self.getParams(opName):
