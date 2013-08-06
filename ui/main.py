@@ -32,7 +32,7 @@ class CustomWindow():
 		
 		self._window = gtk.Window(gtk.WINDOW_TOPLEVEL)
 		self._window.set_title('Antares')
-		self._window.resize(1000, 450)
+		self._window.resize(1200, 650)
 		self._window.connect('delete_event', lambda w: gtk.main_quit)
 		self._window.connect('destroy', gtk.main_quit)
 		
@@ -242,13 +242,3 @@ class CustomWindow():
 	
 	def getWindow(self):
 			return self._window
-	
-	'''
-					#Create/reload notebook
-					if len(self.vbox.get_children()) == 2:
-						self.vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
-					else:
-						self.vbox.remove(self.vbox.get_children().pop())
-						self.vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
-					self.vbox.show_all()
-					'''

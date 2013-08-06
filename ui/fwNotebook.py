@@ -42,15 +42,15 @@ class mainNotebook(gtk.Notebook):
         #Analyze wdgt
         anawgt = analyzeWidget()
         anawgt.start()
-        self.notebook.append_page(anawgt.getWidget(), gtk.Label('Analyze'))
+        self.notebook.append_page(anawgt.getWidget(), gtk.Label('XSD Analyzer'))
         #BF wdgr
         bfwgt = bfWidget()
         bfwgt.start()
         self.notebook.append_page(bfwgt.getWidget(), gtk.Label('BruteForce'))
-	#Log wdgt
-	logwgt = loggerWidget()
-	logwgt.start()
-	self.notebook.append_page(logwgt.getWidget(), gtk.Label('Log'))
+        #Log wdgt
+        #logwgt = loggerWidget()
+        #logwgt.start()
+        #self.notebook.append_page(logwgt.getWidget(), gtk.Label('Log'))
         
     def getNotebook(self):
         return self.notebook

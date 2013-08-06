@@ -23,6 +23,7 @@ class TestRequestWidget(IWidget):
 		self.vbox = gtk.VBox(False, 0)
 		self.TVRq = None
 		self.TVRp = None
+		self.inProcess = None
 
 	def start(self):
 		frame = gtk.Frame('Methods')
@@ -74,10 +75,12 @@ class TestRequestWidget(IWidget):
 		btnCdata.connect('clicked', self.addCDATA)
 		btnCmnt = gtk.Button('Comment selection')
 		btnCmnt.connect('clicked', self.comment)
-		#box.add(gtk.Label('Lines: ' + self.TVRq.get_))
+		self.inProcess = gtk.Image()
+		self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
 		box.add(btnSend)
 		box.add(btnCdata)
 		box.add(btnCmnt)
+		box.add(self.inProcess)
 		frame3.add(box)
 		
 		hpaned.pack2(sw, resize=True, shrink=False)
@@ -89,6 +92,8 @@ class TestRequestWidget(IWidget):
 
 
 	def sendRx(self, widget, data):
+		self.inProcess.set_from_stock(gtk.STOCK_STOP, gtk.ICON_SIZE_BUTTON)
+		self.inProcess.show()
 		buf = self.TVRq.get_buffer()
 		start, end = buf.get_bounds()
 		if core.iswsdlhelper():
@@ -99,14 +104,21 @@ class TestRequestWidget(IWidget):
 
 			buf = self.TVRp.get_buffer()
 			buf.set_text(str(xml))
+			
+			self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
+			self.inProcess.show()
 
 	def changeOp(self, entry):
 		if entry.get_text() != '':
 			if self.opName != entry.get_text():
 				self.opName = entry.get_text()
+				self.inProcess.set_from_stock(gtk.STOCK_STOP, gtk.ICON_SIZE_BUTTON)
+				self.inProcess.show()
 				if core.iswsdlhelper():
 					wsdl = core.iswsdlhelper()
 					req, res = wsdl.getRqRx(self.opName)
+					while gtk.events_pending():
+						gtk.main_iteration(False)
 					if req and res:
 						buf = self.TVRq.get_buffer()
 						buf.set_text(str(req))
@@ -119,6 +131,8 @@ class TestRequestWidget(IWidget):
 						if not res:
 							buf = self.TVRp.get_buffer()
 							buf.set_text('ERROR RECEIVING RESPONSE')
+					self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
+					self.inProcess.show()
 
 	def refresh(self, widget):
 		print 'refresh ' + self.oCombobox

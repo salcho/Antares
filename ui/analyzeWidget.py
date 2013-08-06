@@ -51,8 +51,12 @@ class analyzeWidget(IWidget):
 		self.sw = gtk.ScrolledWindow()
 		self.sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		frame = gtk.Frame("Properties")
-		table = fwTable(self.wsdl.getParamsSchema(self.selected_op), self.wsdl.getParamsNames(self.selected_op))
-		frame.add(table.getWidget())
+		params = self.wsdl.getParamsSchema(self.selected_op)
+		if params and len(params) > 0:
+			table = fwTable(self.wsdl.getParamsSchema(self.selected_op), self.wsdl.getParamsNames(self.selected_op))
+			frame.add(table.getWidget())
+		else:
+			frame.add(gtk.Label("This method has no parameters!"))
 		self.sw.add_with_viewport(frame)
 		self.sw.show_all()
 		self.vbox.pack_start(self.sw, True, True, 0)
