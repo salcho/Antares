@@ -127,7 +127,7 @@ class WSDLHelper(object):
 			tosend = self.getParamObjs(opName)
 			res = getattr(self._client.service, opName)(**tosend)
 		except Exception as e:
-			raise antaresUnknownException("Got unknown exception in getRqRX() at WSDLHelper. " + e)
+			raise antaresUnknownException("Got unknown exception in getRqRX() at WSDLHelper. " + str(e))
 		except WebFault as e:
 			raise antaresUnknownException("Got WebFault exception in getRqRx() at WSDLHelper!" + e)			
 		else:	
@@ -179,6 +179,24 @@ class WSDLHelper(object):
 			print 'getParamObjs @ WSDLHelper: ' + str(e)
 			tosend = {}
 		return tosend
+	
+	"""
+	Create and send a request with the specified payload in all the specified parameters of the specified opName
+	"""
+	def customRequest(self, opName, params, payload):
+		try:
+			if not opName or not params or not payload:
+				return None
+			
+			tosend = {}
+			for name, elem in self.getParams(opName):
+				if name in params:
+					tosend[name] = payload
+					
+			res = getattr(self._client.service, opName)(**tosend)
+			return self._client.messages['rx']
+		except Exception as e:
+			raise antaresUnknownException("Got unknown exception in customRequest() at WSDLHelper. " + str(e))
 
 	def findEnumerations(self, type):
 		"""

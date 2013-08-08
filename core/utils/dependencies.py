@@ -24,13 +24,13 @@ def checkDependencies():
 		msg += "which will help with XML representation. "
 		logger.critical(msg)
 		failed_deps += 1
-
+	
 	try:
-		import pyxb
-		logger.info("Success loading: [('pyxb', %s)]" % pyxb.__version__)
+		import pywebfuzz
+		logger.info("Success loading: [('pyxb', %s)]" % pywebfuzz.__version__)
 	except ImportError:
-		msg = "Antares couldn't find pyxb third-party library "
-		msg += "which will generate XML datatypes. "
+		msg = "Antares couldn't find pywebfuzz third-party library "
+		msg += "which contains fuzzdb payload lists. "
 		logger.critical(msg)
 		failed_deps += 1
 		
