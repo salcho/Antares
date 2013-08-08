@@ -3,7 +3,11 @@
 from exceptions import antaresLogException
 import logging
 import sys
-import data
+
+def addStreamHandler(handler):
+	handler.setFormatter(FORMATTER)
+	LOGGER.addHandler(logging.StreamHandler(handler))
+	LOGGER.info("Added handler %s" % handler)
 
 
 LOGGER = logging.getLogger("antaresLog")

@@ -15,23 +15,23 @@ import shutil
 import cPickle as pickle
 
 class projMan:
-    
+	
 	def __init__(self):
 		self.proj_name = ''
-	        self.proj_url = ''
-        
-	        #Settings dict
-	        self.currSettings = {'name': None, 'url': None, 'hostname': None, 'port': None, 'header': None, 'user': None, 'pwd': None}
-	        self.currWSDL = None
-	        self.headers = None
+		self.proj_url = ''
+	
+		#Settings dict
+		self.currSettings = {'name': None, 'url': None, 'hostname': None, 'port': None, 'header': None, 'user': None, 'pwd': None}
+		self.currWSDL = None
+		self.headers = None
 		logger.debug("Project manager instansiated")
-    
+	
 	def createProject(self, name, url):
-	        try:
+		try:
 			msg = ''
 			self.proj_name = name
 			self.proj_url = url
-			os.chdir(paths['main_path'] + paths['projects_dir'])
+			os.chdir(paths['main_path'] + os.path.sep + paths['projects_dir'])
 			wsdl = urllib2.urlopen(url)
 			os.mkdir(name)
 			os.chdir(name)
@@ -39,13 +39,13 @@ class projMan:
 			fh.write(wsdl.read())
 			fh.close()
 			fh = open(settings_name, 'w')
-
+		
 			self.currSettings['name'] = name
 			self.currSettings['url'] = url
 			fh.write(pickle.dumps(self.currSettings))
 			fh.close()
 		except os.error as e:   
-			msg =  'Error creating project: ' + e
+			msg =  'Error creating project: ' + str(e)
 		except exceptions.IOError as e:
 			msg =  'Error writing WSDL: ' + e
 		except Exception as e:
@@ -55,8 +55,8 @@ class projMan:
 			logger.info("Project %s created" % self.proj_name)
 		finally:
 			os.chdir(paths['main_path'])
-			return msg
-    
+		return msg
+	
 	def loadProject(self, name):
 		"""
 		Load currSettings with the new pickle load, this function MUST be called before updating core, notebook, etc
@@ -73,14 +73,13 @@ class projMan:
 			fh.close()
 		except Exception as e:
 			msg = 'Error: ' + e
-			logger.error("Error loading project %s" % name)
 		else:
 			msg = 'OK'
 			logger.info("Loaded project %s" % name)
 		finally:
 			os.chdir(paths['main_path'])
 			return msg
-    
+	
 	def saveProject(self, d):
 		"""
 		Dump pickle according to currSettings dict
@@ -89,33 +88,33 @@ class projMan:
 			self.currSettings[key] = d[key]
 		fh = open(self.getSettingsPath(), 'w')
 		fh.write(pickle.dumps(self.currSettings))
-        
+		
 	def projList(self):
 		path = paths['main_path'] + os.path.sep + paths['projects_dir']
 		if not os.path.exists(path):
 			os.makedirs(path)
 		return os.listdir(path)
-    
+	
 	def deleteProject(self, name):
 		try:
 			shutil.rmtree(paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + name)
 		except Exception as e:
 			print 'deleteProject @ pm: ' + str(e)
-    
+	
 	def getCurrentSettings(self):
 		return self.currSettings
-    
+	
 	def getURL(self):
-        	return self.currSettings['url']
-    
+		return self.currSettings['url']
+	
 	def getWSDLPath(self):
 		return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.proj_name + os.path.sep + wsdl_name
-    
+	
 	def getSettingsPath(self):
-        	return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.currSettings['name'] + os.path.sep + settings_name
-    
+		return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.currSettings['name'] + os.path.sep + settings_name
+	
 	def getWSDLContents(self):
 		fh = open(self.getWSDLPath(), 'r')
 		return fh.read()
-        
-project_manager = projMan()        
+		
+project_manager = projMan()		
