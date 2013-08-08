@@ -4,8 +4,8 @@ Created on Aug 06, 2013
 @author: Santiago Diaz M - salchoman@gmail.com
 '''
 
-from pywebfuzz.fuzzdb import attack_payloads
-from pywebfuzz.fuzzdb import regex
+from lib.pywebfuzz.fuzzdb import attack_payloads
+from lib.pywebfuzz.fuzzdb import regex
 import re
 
 class IFuzzdbPlug:

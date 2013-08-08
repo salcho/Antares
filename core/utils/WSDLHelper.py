@@ -50,8 +50,8 @@ class WSDLHelper(object):
 
 
 	def __init__(self):
-		# logging.basicConfig(level=logging.DEBUG)
-		# logging.getLogger('suds.client').setLevel(logging.DEBUG)
+		#logging.basicConfig(level=logging.DEBUG)
+		#logging.getLogger('suds.client').setLevel(logging.DEBUG)
 		self._client = None
 		# client lib, used when loading wsdl from file
 		self._cllib = None
@@ -194,7 +194,7 @@ class WSDLHelper(object):
 					tosend[name] = payload
 					
 			res = getattr(self._client.service, opName)(**tosend)
-			return self._client.messages['rx']
+			return res
 		except Exception as e:
 			raise antaresUnknownException("Got unknown exception in customRequest() at WSDLHelper. " + str(e))
 
