@@ -26,8 +26,8 @@ def checkDependencies():
 		failed_deps += 1
 	
 	try:
-		import pywebfuzz
-		logger.info("Success loading: [('pyxb', %s)]" % pywebfuzz.__version__)
+		from lib import pywebfuzz
+		logger.info("Success loading: [('pywebfuzz')]" )
 	except ImportError:
 		msg = "Antares couldn't find pywebfuzz third-party library "
 		msg += "which contains fuzzdb payload lists. "
