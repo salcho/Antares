@@ -24,12 +24,9 @@ class mainNotebook(gtk.Notebook):
     def populate(self, proj, server):
         self.notebook = gtk.Notebook()
         self.notebook.set_tab_pos(gtk.POS_BOTTOM)
-        self.notebook.set_scrollable(scrollable=True)
         #Settings wdgt
         conf = cfgWidget()
-        if len(proj) > 0 and len(server) > 0:
-            conf.fillProject(proj)
-            conf.fillServer(server)
+        conf.start(proj, server)
         self.notebook.append_page(conf.getWidget(), gtk.Label('Settings'))
         #Test wdgt
         testwgt = TestRequestWidget()
@@ -38,7 +35,7 @@ class mainNotebook(gtk.Notebook):
         #Inject wdgt
         injwgt = injWidget()
         injwgt.start()
-        self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injection'))
+        self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injector'))
         #Analyze wdgt
         anawgt = analyzeWidget()
         anawgt.start()

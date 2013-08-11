@@ -20,7 +20,7 @@ class TestRequestWidget(IWidget):
 		self.oCombobox = None
 		self.opName = None
 		
-		self.vbox = gtk.VBox(False, 0)
+		self.results_vbox = gtk.VBox(False, 0)
 		self.TVRq = None
 		self.TVRp = None
 		self.inProcess = None
@@ -38,7 +38,7 @@ class TestRequestWidget(IWidget):
 				self.oCombobox.append_text(op)
 				self.oCombobox.child.connect('changed', self.changeOp)
 			frame.add(self.oCombobox)
-		self.vbox = gtk.VBox(False, 0)
+		self.results_vbox = gtk.VBox(False, 0)
 		hpaned = gtk.HPaned()
 		hpaned.show()
 		#Create textview for responses
@@ -85,10 +85,10 @@ class TestRequestWidget(IWidget):
 		
 		hpaned.pack2(sw, resize=True, shrink=False)
 		frame2.add(hpaned)
-		self.vbox.pack_start(frame, False, False, 0)
-		self.vbox.pack_start(frame2, True, True, 0)
-		self.vbox.pack_start(frame3, False, False, 0)
-		self.vbox.show_all()
+		self.results_vbox.pack_start(frame, False, False, 0)
+		self.results_vbox.pack_start(frame2, True, True, 0)
+		self.results_vbox.pack_start(frame3, False, False, 0)
+		self.results_vbox.show_all()
 
 
 	def sendRx(self, widget, data):
@@ -164,6 +164,6 @@ class TestRequestWidget(IWidget):
 		#buf.insert(iter, '<![CDATA[  ]]> ')
 
 	def getWidget(self):
-		return self.vbox
+		return self.results_vbox
 
 
