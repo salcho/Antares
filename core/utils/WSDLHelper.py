@@ -52,9 +52,9 @@ class WSDLHelper(object):
 	def __init__(self):
 		#logging.basicConfig(level=logging.DEBUG)
 		#logging.getLogger('suds.client').setLevel(logging.DEBUG)
-		self._client = None
+		self.ws_client = None
 		# client lib, used when loading wsdl from file
-		self._cllib = None
+		self.server_client = None
 
 		#control variables
 		self.serviceName = ''
@@ -74,12 +74,12 @@ class WSDLHelper(object):
 		try:
 			msg = ''
 			if url.startswith('file'):
-				self._cllib = urllib2.urlopen(project_manager.getURL())
+				self.server_client = urllib2.urlopen(project_manager.getURL())
 				logger.info("Loaded wsdl from local path %s" % project_manager.getWSDLPath())
 			else:
-				self._cllib = urllib2.urlopen(project_manager.getURL())
+				self.server_client = urllib2.urlopen(project_manager.getURL())
 				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
-			self._client = Client(url, faults=False)
+			self.ws_client = Client(url, faults=False)
 			self.setup()
 		except URLError:
 			msg = "Error: Can't connect to " + url
@@ -102,15 +102,15 @@ class WSDLHelper(object):
 		"""
 		Setup some control variables 
 		"""
-		self.serviceName = self._client.sd[0].service.name
-		self.portName = self._client.sd[0].ports[0][0].name
+		self.serviceName = self.ws_client.sd[0].service.name
+		self.portName = self.ws_client.sd[0].ports[0][0].name
 
 	def getMethods(self):
 		"""
 		Return all methods
 		"""
 		rsp = []
-		for sd in self._client.sd:
+		for sd in self.ws_client.sd:
 			if sd.service.name == self.serviceName:
 				for port, methods in sd.ports:
 					if port.name == self.portName:
@@ -125,7 +125,7 @@ class WSDLHelper(object):
 		"""
 		try:
 			tosend = self.getParamObjs(opName)
-			res = getattr(self._client.service, opName)(**tosend)
+			res = getattr(self.ws_client.service, opName)(**tosend)
 		except Exception as e:
 			raise antaresUnknownException("Got unknown exception in getRqRX() at WSDLHelper. " + str(e))
 		except WebFault as e:
@@ -135,7 +135,7 @@ class WSDLHelper(object):
 			return (None, None)
 		finally:
 			logger.info("Success getting sample data from WS")
-			return (self._client.messages['tx'], self._client.messages['rx'])
+			return (self.ws_client.messages['tx'], self.ws_client.messages['rx'])
 
 	def getParamObjs(self, opName):
 		"""
@@ -182,6 +182,7 @@ class WSDLHelper(object):
 	
 	"""
 	Create and send a request with the specified payload in all the specified parameters of the specified opName
+	Return data is a tuple of the response body and what was received in each parameter
 	"""
 	def customRequest(self, opName, params, payload):
 		try:
@@ -193,10 +194,10 @@ class WSDLHelper(object):
 				if name in params:
 					tosend[name] = payload
 					
-			res = getattr(self._client.service, opName)(**tosend)
-			return res
+			res = getattr(self.ws_client.service, opName)(**tosend)
+			return (self.ws_client.messages['rx'], res)
 		except Exception as e:
-			raise antaresUnknownException("Got unknown exception in customRequest() at WSDLHelper. " + str(e))
+			print ("Got unknown exception in customRequest() at WSDLHelper. " + e)
 
 	def findEnumerations(self, type):
 		"""
@@ -206,7 +207,7 @@ class WSDLHelper(object):
 		"""
 		
 		ret = set()
-		category = self._client.factory.create('{' + type[1] + '}' + type[0])
+		category = self.ws_client.factory.create('{' + type[1] + '}' + type[0])
 		for key in category.__keylist__:
 			ret.add(getattr(category, key))
 		return ret
@@ -215,7 +216,7 @@ class WSDLHelper(object):
 		"""
         Return parameter tuples (name, element) of selected operation
         """
-		for sd in self._client.sd:
+		for sd in self.ws_client.sd:
 			for port, methods in sd.ports:
 				for name, args in methods:
 					if name == opName:
@@ -231,7 +232,7 @@ class WSDLHelper(object):
 		ret = []
 		for name, elem in self.getParams(opName):
 			if elem.type[1] and elem.type[0]:
-				ret.append(self._client.factory.resolver.find('{' + elem.type[1] + '}' + elem.type[0]))
+				ret.append(self.ws_client.factory.resolver.find('{' + elem.type[1] + '}' + elem.type[0]))
 		return ret
 	
 	def getParamsNames(self, opName):
@@ -246,14 +247,14 @@ class WSDLHelper(object):
 	
 	def getBindings(self):
 		ret = []
-		for sd in self._client.sd:
+		for sd in self.ws_client.sd:
 			for port, methods in sd.ports:
 				ret.append(port)
 		return ret
 
 	def getServices(self):
 		ret = []
-		for sd in self._client.sd:
+		for sd in self.ws_client.sd:
 			ret.append(sd.service.name)
 		return ret
 
@@ -261,30 +262,27 @@ class WSDLHelper(object):
 		"""
 		Send custom WSDL request from user interface
 		"""
-		res = getattr(self._client.service, opName)(__inject={'msg':xml})
-		return self._client.messages['rx']
+		res = getattr(self.ws_client.service, opName)(__inject={'msg':xml})
+		return self.ws_client.messages['rx']
 	
-	def srvInfoDict(self):
+	def getHeaders(self):
 		"""
 		Create dictionary to show server's properties in UI
-		#TODO: Rewrite this!
 		"""
-		port = urlparse(self._cllib.url).port
-		if not port:
-			port = 80
-		hostname = urlparse(self._cllib.url).hostname
-		dict = {'hostname': hostname, 'port': port, 'header': self._cllib.headers.getheader('Server')}
-		return dict
+		return self.server_client.headers.dict
 
 	def setPort(self, pName):
 		if pName != '':
 			self.portName = pName
-			self._client.set_options(port=pName)
+			self.ws_client.set_options(port=pName)
 
 	def setService(self, sName):
 		if sName != '':
 			self.serviceName = sName
-			self._client.set_options(service=sName)
+			self.ws_client.set_options(service=sName)
+
+	def getServerClient(self):
+		return self.server_client
 
 	def is_loaded(self):
 		return self.is_loaded

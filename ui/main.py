@@ -105,8 +105,9 @@ class CustomWindow():
 				ret = project_manager.createProject(name.get_text(), url.get_text())
 				if "Error" in ret:
 					self.showErrorDialog(ret)
-			else:
-				self.showMessageDialog("Project created!")
+				else:
+					self.showMessageDialog("Project created!")
+	
 		dialog.destroy()
 	
 	def showErrorDialog(self, txt):
@@ -196,7 +197,7 @@ class CustomWindow():
 			# Get settings, populate notebook
 			nt.populate(project_manager.getCurrentSettings(), core.getServerInfo())
 			self.notebook = nt.getNotebook()
-
+			
 	def projSelected(self, widget, action):
 			self.currProject = action
 
@@ -216,9 +217,9 @@ class CustomWindow():
 					group = gtk.RadioButton(group=None, label=None)
 					for proj in projs:
 						b = gtk.RadioButton(group, proj)
-					b.connect("toggled", self.toDelete, proj)
-					b.set_active(False)
-					vbox.pack_start(b, True, True, 0)
+						b.connect("toggled", self.toDelete, proj)
+						b.set_active(False)
+						vbox.pack_start(b, True, True, 0)
 			else:
 				b = gtk.CheckButton(projs.pop())
 				b.connect("toggled", self.toDelete, b.get_label())

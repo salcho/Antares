@@ -6,33 +6,15 @@ Created on Aug 06, 2013
 
 from lib.pywebfuzz.fuzzdb import attack_payloads
 from lib.pywebfuzz.fuzzdb import regex
-import re
+from core.plugs.IPlugin import IPlugin
 
-class IFuzzdbPlug:
+class IFuzzdbPlug(IPlugin):
     
     def __init__(self):
+        IPlugin.__init__(self)
         self.name = 'fuzzdb plugin interface'
         self.description = 'all fuzzdb plugins must implement this'
-        self.payloads = []
         self.regex = regex.errors
-        
-    """
-    This function will check an xml parameter (say, WS response) against any fuzzdb regexp
-    """
-    def checkRegex(self, xml):
-        for reg in regex:
-            pattern = r'^(.*?)(%s)(.*?)$' % reg
-            regexp = re.compile(pattern, re.I | re.M)
-            print regexp.findall(xml)
-            
-    def getPayloads(self):
-        return self.payloads
-    
-    def getName(self):
-        return self.name
-    
-    def getDescription(self):
-        return self.description
 
 class controlCharsPlug(IFuzzdbPlug):
     

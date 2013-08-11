@@ -5,6 +5,7 @@ Created on Jan 19, 2013
 '''
 
 from core.utils.WSDLHelper import wsdlhelper
+from core.utils.analyzer import responseAnalyzer
 from core.data import logger
 from core import plugins
 from ui.main import mainUI
@@ -21,6 +22,7 @@ class Core(object):
 		"""
 		logger.debug("Core module instansiated")
 		self.plugin_manager = plugins.PluginManager()
+		self.analyzer = responseAnalyzer()
 		self.gui = mainUI()
 	
 	def startUI(self):
@@ -34,6 +36,12 @@ class Core(object):
 			return False
 		return True
 	
+	def initAnalyzer(self, data):
+		self.analyzer.start(data)
+	
+	def getServerInfo(self):
+		return wsdlhelper.getHeaders()
+	
 	def iswsdlhelper(self):
 		if not wsdlhelper:
 			return False
@@ -45,10 +53,12 @@ class Core(object):
 			return False
 		else:
 			return self.plugin_manager
-	
-	def getServerInfo(self):
-		#wsdlhelper already instansiated
-		return wsdlhelper.srvInfoDict()
+		
+	def isAnalyzer(self):
+		if self.analyzer.inUse():
+			return self.analyzer
+		else:
+			return False
 		
 	'''
 	def isProjMan(self):

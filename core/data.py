@@ -20,7 +20,7 @@ settings_name = 'settings.p'
 
 logger = LOGGER
 
-# WSDL stuff
+# WSDL datatypes: http://www.w3.org/TR/xmlschema-2/#built-in-datatypes
 DEFAULT_STRING_VALUE = 'antares'
 DEFAULT_BOOLEAN_VALUE = 1
 DEFAULT_DECIMAL_VALUE = 1.0
@@ -43,3 +43,9 @@ DEFAULT_ANYURI_VALUE = 'http://anyhost/anyURI'
 DEFAULT_UNKNOWN_VALUE = 'UNKNOWN'
 DEFAULT_INTEGER_VALUE = 1
 DEFAULT_LONG_VALUE = 1
+
+# Regular expressions to match error messages
+ERROR_GENERIC_REGEXP = (
+                          r'<.*faultstring>(.*%s.*)</faultstring.*',
+                          r'^[<.*>]*?(.*%s.*)[<.*>]*$'
+                          )

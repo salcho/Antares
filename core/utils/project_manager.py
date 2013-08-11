@@ -21,7 +21,7 @@ class projMan:
 		self.proj_url = ''
 	
 		#Settings dict
-		self.currSettings = {'name': None, 'url': None, 'hostname': None, 'port': None, 'header': None, 'user': None, 'pwd': None}
+		self.currSettings = {'name': None, 'url': None, 'user': None, 'password': None}
 		self.currWSDL = None
 		self.headers = None
 		logger.debug("Project manager instansiated")
@@ -35,21 +35,21 @@ class projMan:
 			wsdl = urllib2.urlopen(url)
 			os.mkdir(name)
 			os.chdir(name)
-			fh = open(wsdl_name, 'w')
-			fh.write(wsdl.read())
-			fh.close()
-			fh = open(settings_name, 'w')
-		
+			wsdl_file = open(wsdl_name, 'w')
+			wsdl_file.write(wsdl.read())
+			wsdl_file.close()
+			
+			sett_file = open(settings_name, 'w')
 			self.currSettings['name'] = name
 			self.currSettings['url'] = url
-			fh.write(pickle.dumps(self.currSettings))
-			fh.close()
+			sett_file.write(pickle.dumps(self.currSettings))
+			sett_file.close()
 		except os.error as e:   
-			msg =  'Error creating project: ' + str(e)
+			msg =  'Error creating project: %s' % e.strerror
 		except exceptions.IOError as e:
-			msg =  'Error writing WSDL: ' + e
+			msg =  'Error writing to file: %s' % e.strerror
 		except Exception as e:
-			msg = 'createProject, unknown exception: ' + e
+			msg = 'createProject, unknown exception: %s ' % e.strerror
 		else:
 			msg =  'Project created'
 			logger.info("Project %s created" % self.proj_name)
@@ -65,12 +65,18 @@ class projMan:
 		try:
 			msg = ''
 			os.chdir(paths['projects_dir'] + os.path.sep + name)
+			# Load pickle file
 			self.currSettings = pickle.load(open(settings_name, 'rb'))
+			
+			# Load control structures
 			self.currSettings['name'] = name
 			self.proj_name = name
+			
+			# Load WSDL in memory
 			fh = open(wsdl_name, 'r')
 			self.currWSDL = fh.read()
 			fh.close()
+			
 		except Exception as e:
 			msg = 'Error: ' + e
 		else:

@@ -6,12 +6,13 @@ Created on Feb 20, 2013
 
 from core.fwCore import core
 from ui.IWidget import IWidget
+from core.utils.wsresponse_object import wsResponse
 import gtk
 
 class injWidget(IWidget):
 	
 	def __init__(self):
-		self.hbox = gtk.HBox(True, 0)
+		self.hbox = gtk.HBox(False, 0)
 
 		self.selected_op = None
 		self.selected_params = []
@@ -19,6 +20,9 @@ class injWidget(IWidget):
 		self.wsdl = core.iswsdlhelper()
 		self.progressbar = None
 		self.num_threads = gtk.Entry(0)
+		self.tree_model = None
+		self.tmsort = None
+		self.tree_view = None
 
 		self.frame_ops = gtk.Frame("Operations")
 		self.frame_params = gtk.Frame("Parameters")
@@ -29,8 +33,8 @@ class injWidget(IWidget):
 		frame_vbox.pack_start(self.frame_ops, True, True, 0)
 		frame_vbox.pack_start(self.frame_params, True, True, 0)
 		
-		self.hbox.pack_start(frame_vbox, True, True, 0)
-		self.hbox.pack_start(self.frame_payloads, True, True, 0)
+		self.hbox.pack_start(frame_vbox, False, True, 0)
+		self.hbox.pack_start(self.frame_payloads, False, True, 0)
 		self.hbox.pack_start(self.frame_res, True, True, 0)
 
 	def getWidget(self):
@@ -67,21 +71,22 @@ class injWidget(IWidget):
 			chkbtn = None
 			for op in ops:
 				chkbtn = gtk.RadioButton(group=chkbtn, label=op)
-				chkbtn.connect("toggled", self.opSelected, chkbtn.get_label())
+				chkbtn.connect("clicked", self.opSelected, chkbtn.get_label())
+				chkbtn.set_active(False)
 				vbtnbox.add(chkbtn)
-				
+			
 			sw.add_with_viewport(vbtnbox)
 			self.frame_ops.add(sw)
 				
 		self.frame_ops.show_all()
 		
 	# Fill this frame with the params corresponding to the selected operation
-	def fillFrameParams(self, opName):
+	def fillFrameParams(self):
 		if self.wsdl:
 			for child in self.frame_params.get_children():
 				self.frame_params.remove(child)
 			self.frame_params.set_label("Parameters")
-			ops = self.wsdl.getParamsNames(opName)
+			ops = self.wsdl.getParamsNames(self.selected_op)
 			sw = gtk.ScrolledWindow()
 			sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
 			if ops:
@@ -108,7 +113,7 @@ class injWidget(IWidget):
 		if plug_manager:
 			self.frame_payloads.set_label("Payloads")
 			sw = gtk.ScrolledWindow()
-			sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+			sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 			vbtnbox = gtk.VButtonBox()
 			vbtnbox.set_layout(gtk.BUTTONBOX_START)
 			vbtnbox.set_spacing(1)
@@ -138,11 +143,45 @@ class injWidget(IWidget):
 			
 		self.frame_payloads.show_all()
 		
-	def fillResultsFrame(self):
-		table = gtk.Table(1, 3, False)
-		title = gtk.Label("ID")
-		pass
-		table.attach(gtk.Label(""))
+	def fillResultsFrame(self, res_list):
+		# Reset frame
+		for child in self.frame_res.get_children():
+			self.frame_res.remove(child)
+		self.frame_res.set_label("Results")
+		
+		self.tree_model = gtk.TreeStore(str, str, str, str, str, str, str) 
+		# Sort results by ID
+		res_list = sorted(res_list, key=lambda plugin: plugin.getPlugin().getName())
+		# Fill the TreeModel
+		parent_iters = {}
+		for response in res_list:
+			plugin_name = response.getPlugin().getName()
+			if plugin_name not in parent_iters:
+				parent_iters[plugin_name] = self.tree_model.append(None, [plugin_name, None, None, None, None, None, None])
+			
+			if response.getResponse():
+				self.tree_model.append(parent_iters[plugin_name], [None, response.getID(), response.getParams(), response.getSize(), response.getHTTPCode(), response.getPayload(), response.getResponse()[:40]])
+		
+		# Setup TreeView
+		self.tmsort = gtk.TreeModelSort(self.tree_model)
+		self.tree_view = gtk.TreeView(self.tmsort)
+		tvcolumns={}
+		cells={}
+		i=0
+		for col in ('Plugin','ID', 'Parameter', 'Size', 'HTTP Code', 'Payload', 'Response (truncated)'):	
+			tvcolumns[col] = gtk.TreeViewColumn(col)	
+			self.tree_view.append_column(tvcolumns[col])
+			cells[col] = gtk.CellRendererText()
+			tvcolumns[col].pack_start(cells[col], True)
+			tvcolumns[col].add_attribute(cells[col], 'text', i)
+			i += 1
+		
+		# Make searchable
+		self.tree_view.set_search_column(1)
+		scrolled_window = gtk.ScrolledWindow()
+		scrolled_window.add_with_viewport(self.tree_view)
+		self.frame_res.add(scrolled_window)
+		self.frame_res.show_all()
 		
 	#---------------
 	# manage selected operations, parameters and payloads
@@ -163,7 +202,7 @@ class injWidget(IWidget):
 		if widget.get_active() and action != self.selected_op:
 			self.selected_op = action
 			self.selected_params = []
-		self.fillFrameParams(self.selected_op)
+			self.fillFrameParams()
 		
 	def checkAll(self, widget, vbtnbox):
 		for child in vbtnbox.get_children():
@@ -183,13 +222,14 @@ class injWidget(IWidget):
 	def launchAttack(self, widget, plug_manager):
 		if self.selected_op and self.selected_params and self.selected_payloads and int(self.num_threads.get_text()):
 			self.updateProgress(text='Waiting')
-			res_table = plug_manager.startAttack(self.selected_op, 
+			res_list = plug_manager.startAttack(self.selected_op, 
 												self.selected_params, 
 												self.selected_payloads, 
 												int(self.num_threads.get_text()), 
 												progress=self.updateProgress)
-			self.updateProgress(percent=1, text='Done')
-			return res_table
+			self.updateProgress(text='Done')
+			self.fillResultsFrame(res_list)
+			return res_list
 		else:
 			if not self.selected_op:
 				self.updateProgress(percent=0, text='No operation selected')
@@ -207,7 +247,7 @@ class injWidget(IWidget):
 	def updateProgress(self, percent=None, text=None):
 		if not percent and not text:
 			return
-		if percent > 1:
+		if percent > 1 or percent < 0:
 			return
 		if text:
 			self.progressbar.set_text(text)
@@ -215,4 +255,3 @@ class injWidget(IWidget):
 			self.progressbar.set_fraction(percent)
 			while gtk.events_pending():
 				gtk.main_iteration()
-		
