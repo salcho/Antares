@@ -19,6 +19,7 @@ class PluginManager(object):
     def __init__(self):
         logger.debug("Plugin Manager instansiated")
         
+        self.thread_pool = []
         self.loaded_plugins = {}
         # This queue is the job queue for the threads
         self.request_queue = Queue.Queue()
@@ -61,6 +62,7 @@ class PluginManager(object):
             t = attackThread(self.request_queue, self.response_list, wsdlhelper, i, opName, self.getPlugin)
             t.setDaemon(True)
             t.start()
+            self.thread_pool.append(t)
         
         size = 0
         cnt = 1
@@ -82,14 +84,17 @@ class PluginManager(object):
                 per = 1-(float(self.request_queue.qsize())/size)
                 progress(percent=per, text=str(int(per*100)) + '%')
     
-        # Report results to analyzer and each individual plugin
-        core.initAnalyzer(self.response_list)
-        for response in self.response_list:
-            plugin = response.getPlugin()
-            plugin.reportResult(response)
-            
+        if self.response_list:
+            # Report results to analyzer 
+            core.initAnalyzer(self.response_list)
             
         return self.response_list
+    
+    def stopAttack(self):
+        for thread in self.thread_pool:
+            thread.stop()
+        with self.request_queue.mutex:
+            self.request_queue.queue.clear()
     
     # Return the plugin that sent this payload
     def getPlugin(self, payload):
@@ -124,23 +129,24 @@ class attackThread(threading.Thread):
         self.id = id
         self.op_name = op_name
         self.get_plugin = getPlugin
+        self._stop = threading.Event()
         
     def run(self):
         while True:
-            try:
-                [req_id, (args, payload)] = self.queue.get()
-                if not payload or not args or not req_id:
-                    self.queue.task_done()
-                else:
-                    result = self.wsdl.customRequest(self.op_name, args, payload)
-                    if result:
-                        response = wsResponse(id=req_id, params=args, size=sys.getsizeof(result), response=result, payload=payload, plugin=self.get_plugin(payload))
-                        # Report this to the appropiate plugin
-                        self.out_list.append(response)
-                    else:
-                        raise
-                    #print 'Thread %d says: Got result [%d]: %5s' % (self.id, sys.getsizeof(result), result)
-            except Exception as e:
+            [req_id, (args, payload)] = self.queue.get()
+            if not payload or not args or not req_id:
                 self.queue.task_done()
-                logger.error("Error sending request. Args are: %s ; Payload is: %s ; Message is: %s" % (args, payload, str(e)))
-    
+            else:
+                resp_object = self.wsdl.customRequest(self.op_name, args, payload)
+                if resp_object[0]:
+                    response = wsResponse(id=req_id, params=args, size=sys.getsizeof(resp_object[0]), response=resp_object, payload=payload, plugin=self.get_plugin(payload))
+                    # Report this to the appropiate plugin
+                    plugin = response.getPlugin()
+                    plugin.reportResult(response)
+                    self.out_list.append(response)
+                else:
+                    self.queue.task_done()
+                    logger.error("Empty response! Error sending request ->  Args are: %s ; Payload is: %s" % (args, payload))
+                    
+    def stop(self):
+        self._stop.set()

@@ -12,6 +12,7 @@ import gtk
 class injWidget(IWidget):
 	
 	def __init__(self):
+		IWidget.__init__(self)
 		self.hbox = gtk.HBox(False, 0)
 
 		self.selected_op = None
@@ -23,6 +24,8 @@ class injWidget(IWidget):
 		self.tree_model = None
 		self.tmsort = None
 		self.tree_view = None
+		self.launch_button = None
+		self.stop_button = None
 
 		self.frame_ops = gtk.Frame("Operations")
 		self.frame_params = gtk.Frame("Parameters")
@@ -125,8 +128,12 @@ class injWidget(IWidget):
 			hbox = gtk.HBox(False, 1)
 			hbox.pack_start(gtk.Label("Threads"))
 			hbox.pack_start(self.num_threads)
-			launch_btn = gtk.Button('Launch', gtk.STOCK_EXECUTE)
-			launch_btn.connect("clicked", self.launchAttack, plug_manager)
+			self.launch_button = gtk.Button('Launch', gtk.STOCK_EXECUTE)
+			self.launch_button.connect("clicked", self.launchAttack, plug_manager)
+			
+			self.stop_button = gtk.Button('Stop', gtk.STOCK_STOP)
+			self.stop_button.set_sensitive(False)
+			self.stop_button.connect("clicked", self.stopAttack, plug_manager)
 			
 			self.progressbar = gtk.ProgressBar(adjustment=None)
 			self.num_threads.set_buffer(gtk.EntryBuffer('5', 1))
@@ -135,7 +142,8 @@ class injWidget(IWidget):
 			vbtnbox.add(gtk.HSeparator())
 			vbtnbox.add(self.getCheckButtons(vbtnbox))
 			vbtnbox.add(hbox)
-			vbtnbox.add(launch_btn)
+			vbtnbox.add(self.launch_button)
+			vbtnbox.add(self.stop_button)
 			vbtnbox.add(self.progressbar)
 			
 			sw.add_with_viewport(vbtnbox)
@@ -160,7 +168,14 @@ class injWidget(IWidget):
 				parent_iters[plugin_name] = self.tree_model.append(None, [plugin_name, None, None, None, None, None, None])
 			
 			if response.getResponse():
-				self.tree_model.append(parent_iters[plugin_name], [None, response.getID(), response.getParams(), response.getSize(), response.getHTTPCode(), response.getPayload(), response.getResponse()[:40]])
+				self.tree_model.append(parent_iters[plugin_name], 
+									[None, 
+									response.getID(), 
+									response.getParams(), 
+									response.getSize(), 
+									response.getHTTPCode(), 
+									response.getPayload(), 
+									response.getResponse()])
 		
 		# Setup TreeView
 		self.tmsort = gtk.TreeModelSort(self.tree_model)
@@ -221,15 +236,21 @@ class injWidget(IWidget):
 	# Call plugin_manager and execute attack
 	def launchAttack(self, widget, plug_manager):
 		if self.selected_op and self.selected_params and self.selected_payloads and int(self.num_threads.get_text()):
+			self.launch_button.set_sensitive(False)
+			self.stop_button.set_sensitive(True)
 			self.updateProgress(text='Waiting')
 			res_list = plug_manager.startAttack(self.selected_op, 
 												self.selected_params, 
 												self.selected_payloads, 
 												int(self.num_threads.get_text()), 
 												progress=self.updateProgress)
+			
+			# Tell the analyzer to refresh this
+			from ui.fwNotebook import ANALYZE_TAB
+			core.callUI(ANALYZE_TAB, 'refresh')
 			self.updateProgress(text='Done')
 			self.fillResultsFrame(res_list)
-			return res_list
+			#return res_list
 		else:
 			if not self.selected_op:
 				self.updateProgress(percent=0, text='No operation selected')
@@ -239,8 +260,16 @@ class injWidget(IWidget):
 				self.updateProgress(percent=0, text='No plugins selected')
 			if not int(self.num_threads.get_text()):
 				self.updateProgress(percent=0, text='No threads')
-		return None
+		self.stop_button.set_sensitive(False)
+		self.launch_button.set_sensitive(True)
+		return
 	
+	def stopAttack(self, widget, plug_manager):
+		self.updateProgress(text="Stopping threads")
+		plug_manager.stopAttack()
+		self.stop_button.set_sensitive(False)
+		self.launch_button.set_sensitive(True)
+		
 	"""
 	Receives percentage done, optional text and updates the progress bar
 	"""

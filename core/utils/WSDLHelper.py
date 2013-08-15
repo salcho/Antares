@@ -30,6 +30,7 @@ from core.data import DEFAULT_INTEGER_VALUE
 from core.data import DEFAULT_LONG_VALUE
 
 from suds.client import Client
+from suds.client import TransportError
 from suds.sax.text import Raw
 from suds import WebFault
 from suds import null
@@ -61,6 +62,10 @@ class WSDLHelper(object):
 		self.portName = ''
 		self.is_loaded = False
 		logger.debug("WSDLHelper object instansiated")
+		
+	# ---------------------------------
+	# Config methods
+	# ---------------------------------
 
 	def loadWSDL(self, url):
 		"""
@@ -79,7 +84,7 @@ class WSDLHelper(object):
 			else:
 				self.server_client = urllib2.urlopen(project_manager.getURL())
 				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
-			self.ws_client = Client(url, faults=False)
+			self.ws_client = Client(url, faults=True, prettyxml=True)
 			self.setup()
 		except URLError:
 			msg = "Error: Can't connect to " + url
@@ -89,21 +94,129 @@ class WSDLHelper(object):
 			msg = "Error: Can't write to offline WSDL file"
 		except Exception as e:
 			msg = 'Error: loadWSDL @ WSDLHelper ' + str(e) + '; ' + type(e)
-		else:
+	
+		# Check if we are ok	
+		if self.ws_client:
 			msg = 'OK'
 			self.is_loaded = True
 			logger.info("Success loading WSDL from %s" % url)
-		finally:
-			if not self.is_loaded:
-				logger.error("Failed loading WSDL from %s" % url)
-			return msg
-
+			
+		if not self.is_loaded:
+			logger.error("Failed loading WSDL from %s" % url)
+		return msg
+	
 	def setup(self):
 		"""
 		Setup some control variables 
 		"""
 		self.serviceName = self.ws_client.sd[0].service.name
 		self.portName = self.ws_client.sd[0].ports[0][0].name
+		
+	# -------------------------
+	# Manipulating requests
+	# -------------------------
+	"""
+	Create and send a request with the specified payload in all the specified parameters of the specified opName
+	Return data is a tuple of the response body and what was received in each parameter
+	"""
+	def customRequest(self, opName, params, payload):
+		ret = (None, None)
+		res = None
+		try:
+			if not opName or not params or not payload:
+				return None
+			
+			tosend = {}
+			for name, elem in self.getParams(opName):
+				if name in params:
+					tosend[name] = payload
+					
+			res = getattr(self.ws_client.service, opName)(**tosend)
+		except WebFault as e:
+			logger.error("Got WebFault exception at customRequest: %s" % e.message)
+			ret = (str(e.message), res)
+		except Exception as e:
+			error = self.processException(e)
+			if error == 401:
+				# How do we stop this mess?
+				pass
+		else:
+			ret = (str(self.ws_client.messages['rx']), res)
+			
+		return ret
+
+	def findEnumerations(self, type):
+		"""
+		This function receives an element type (That is: type[0] -> name, type[1] -> namespace)
+		It will find if it corresponds to enumeration values and return all possible values
+		This function could work as a generic factory in the future, but that's to be seen
+		"""
+		
+		ret = set()
+		category = self.ws_client.factory.create('{' + type[1] + '}' + type[0])
+		for key in category.__keylist__:
+			ret.add(getattr(category, key))
+		return ret
+
+	def sendRaw(self, opName, xml):
+		"""
+		Send custom WSDL request from user interface
+		"""
+		res = None
+		try:
+			getattr(self.ws_client.service, opName)(__inject={'msg':xml})
+			res = self.ws_client.messages['rx']
+		except WebFault as wf:
+			logger.error("Got WebFault sending raw request: %s", wf.message)
+			res = str(wf.message)
+		except Exception as e:
+			self.processException(e)
+		return res
+	
+	def getRqRx(self, opName):
+		"""
+		Craft and send a test request to the specified operation
+		Return request template + response
+		"""
+		ret = (None, None)
+		try:
+			tosend = self.getParamObjs(opName)
+			# tosend might be empty, this should be caught by the WebFault exception at retrieval
+			getattr(self.ws_client.service, opName)(**tosend)
+			ret = (self.ws_client.messages['tx'], self.ws_client.messages['rx'])
+		except WebFault as e:
+			logger.error("Got WebFault sending request: %s" % e.message)
+			ret = (self.ws_client.messages['tx'], str(e.message))
+		except TransportError as te:
+			logger.error("Got TransportError sending request: %s" % te.message)
+		# suds client class may just raise a regular Exception to tell us of HTTP code 401	
+		except Exception as e:
+			error = self.processException(e)
+			if error == 401:
+				txt = 'Got a 401 Unauthorized HTTP packet. \nThat means this EndPoint requires HTTP authentication.\n\n'
+				txt += "Such method is known for being vulnerable to bruteforcing. \n"
+				txt += "Fortunately, you can specify these credentials in the configuration tab."
+				ret = (txt, None)
+		return ret 
+	
+	def processException(self, except_obj):
+		"""
+		All methods interacting with the EndPoint should call this function if they found
+		a general Exception. Suds will raise some of these with authentication messages.
+		This function will return the HTTP code error int
+		"""
+		msg = except_obj.message
+		# HTTP Authentication here
+		if u'Unauthorized' in msg[1]:
+			# Tell everyone 
+			logger.error("Got HTTP code 401, please specify HTTP credentials in the config tab!")
+			return 401
+		else:
+			logger.error("Unknown exception pat porcessException. Data is: %s" % msg)
+		
+	# ------------------
+	# Getters and setters
+	# ------------------"
 
 	def getMethods(self):
 		"""
@@ -118,41 +231,13 @@ class WSDLHelper(object):
 							rsp.append(name)
 		return rsp					
 
-	def getRqRx(self, opName):
-		"""
-		Craft and send a test request to the specified operation
-		Return request template + response
-		"""
-		try:
-			tosend = self.getParamObjs(opName)
-			res = getattr(self.ws_client.service, opName)(**tosend)
-		except Exception as e:
-			raise antaresUnknownException("Got unknown exception in getRqRX() at WSDLHelper. " + str(e))
-		except WebFault as e:
-			raise antaresUnknownException("Got WebFault exception in getRqRx() at WSDLHelper!" + e)			
-		else:	
-			logger.warning("Error sending/getting sample req/rsp")
-			return (None, None)
-		finally:
-			logger.info("Success getting sample data from WS")
-			return (self.ws_client.messages['tx'], self.ws_client.messages['rx'])
-
 	def getParamObjs(self, opName):
 		"""
 		Return parameters and sample data to be sent to the specified operation in the form of a dictionary
 		"""
 
 		tosend = {}
-		#target_params = set()
 		try:
-			"""
-			if params and len(params) > 0:
-				for name, elem in self.getParams(opName):
-					if name in params:
-						target_params.add((name, elem))
-			else:
-				target_params = self.getParams(opName) 
-			"""
 			for name, elem in self.getParams(opName):
 				# Simple types
 				if str(elem.type[0]) == 'string':
@@ -176,41 +261,8 @@ class WSDLHelper(object):
 							tosend[name] += enum + '|'
 				
 		except Exception as e:
-			print 'getParamObjs @ WSDLHelper: ' + str(e)
 			tosend = {}
 		return tosend
-	
-	"""
-	Create and send a request with the specified payload in all the specified parameters of the specified opName
-	Return data is a tuple of the response body and what was received in each parameter
-	"""
-	def customRequest(self, opName, params, payload):
-		try:
-			if not opName or not params or not payload:
-				return None
-			
-			tosend = {}
-			for name, elem in self.getParams(opName):
-				if name in params:
-					tosend[name] = payload
-					
-			res = getattr(self.ws_client.service, opName)(**tosend)
-			return (self.ws_client.messages['rx'], res)
-		except Exception as e:
-			print ("Got unknown exception in customRequest() at WSDLHelper. " + e)
-
-	def findEnumerations(self, type):
-		"""
-		This function receives an element type (That is: type[0] -> name, type[1] -> namespace)
-		It will find if it corresponds to enumeration values and return all possible values
-		This function could work as a generic factory in the future, but that's to be seen
-		"""
-		
-		ret = set()
-		category = self.ws_client.factory.create('{' + type[1] + '}' + type[0])
-		for key in category.__keylist__:
-			ret.add(getattr(category, key))
-		return ret
 	
 	def getParams(self, opName):
 		"""
@@ -257,13 +309,6 @@ class WSDLHelper(object):
 		for sd in self.ws_client.sd:
 			ret.append(sd.service.name)
 		return ret
-
-	def sendRaw(self, opName, xml):
-		"""
-		Send custom WSDL request from user interface
-		"""
-		res = getattr(self.ws_client.service, opName)(__inject={'msg':xml})
-		return self.ws_client.messages['rx']
 	
 	def getHeaders(self):
 		"""

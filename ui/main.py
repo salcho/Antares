@@ -20,6 +20,12 @@ class mainUI(object):
 		
 	def showError(self, txt):
 		self.cw.showErrorDialog(txt)
+	
+	# Call a function from one of the widgets!
+	def callFromWidget(self, tab_name, function_name):
+		widget = self.cw.getNotebook().getTabs()[tab_name]
+		func = getattr(widget, function_name)
+		return func()
 
 class CustomWindow():
 	
@@ -27,6 +33,7 @@ class CustomWindow():
 		self.uiManager = None
 		self.actionGroup = None
 		self.currProject = None
+		self.main_notebook = None
 		self.notebook = None
 		self.vbox = None
 		
@@ -191,12 +198,12 @@ class CustomWindow():
 
 	def initNotebook(self):
 		from ui.fwNotebook import mainNotebook
-		nt = mainNotebook()
+		self.main_notebook = mainNotebook()
 		from core.fwCore import core
 		if core.iswsdlhelper():
 			# Get settings, populate notebook
-			nt.populate(project_manager.getCurrentSettings(), core.getServerInfo())
-			self.notebook = nt.getNotebook()
+			self.main_notebook.populate(project_manager.getCurrentSettings(), core.getServerInfo())
+			self.notebook = self.main_notebook.getNotebook()
 			
 	def projSelected(self, widget, action):
 			self.currProject = action
@@ -235,6 +242,10 @@ class CustomWindow():
 		else:
 			dialog.destroy()
 			
+	# For communication between widgets!
+	def getNotebook(self):
+		return self.main_notebook
+	
 	def toDelete(self, w, name):
 			self.todelete = name
 	

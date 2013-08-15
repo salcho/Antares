@@ -14,14 +14,14 @@ import pygtk
 import gtk
 from gtk import gdk
 
-class cfgWidget:
+class cfgWidget(IWidget):
     
     '''
     This Widget handles the configuration tab
     '''
     
     def __init__(self):
-
+        IWidget.__init__(self)
         self.conf_dict = {}
         self.server_dict = {}
         self.service_combobox = None

@@ -1,127 +1,76 @@
 '''
-Created on Feb 21, 2013
+Created on Feb 25, 2013
 
-@author = Santiago Diaz - salchoman@gmail.com
+@author: Santiago Diaz - salchoman@gmail.com
 '''
 
 from core.fwCore import core
+from core.utils.analyzer import HTTP_DICT
+from core.utils.analyzer import PARAMS_DICT
+from core.utils.analyzer import PLUGIN_DICT
+from core.utils.analyzer import RSP_DICT
+from core.utils.analyzer import SIZE_DICT
 from ui.IWidget import IWidget
-#import wx
-#import wx.grid
-import exceptions
 import gtk
+import pygtk
 
 class analyzeWidget(IWidget):
-	def __init__(self):
-		self.vbox = None
-		self.oCombobox = None
-		self.wsdl = None
-		self.selected_op = None
-		self.sw = None
-		
-	def start(self):
-		self.vbox = gtk.VBox()
-		frame = gtk.Frame('Methods')
-		frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
-		self.oCombobox = gtk.combo_box_new_text()
-		self.oCombobox.append_text('')
-		self.wsdl = core.iswsdlhelper()
-		if self.wsdl:
-			for op in self.wsdl.getMethods():
-				self.oCombobox.append_text(op)
-				self.oCombobox.connect('changed', self.changeOp)
-			frame.add(self.oCombobox)
-		self.vbox.pack_start(frame, False, False, 0)
+    
+    def __init__(self):
+        IWidget.__init__(self)
+        self.hbox = None
+        self.info_frame = gtk.Frame("Statistics")
+        self.plugin_frame = gtk.Frame("Plugins")
+        self.graph_frame = gtk.Frame("Graphs")
+        self.plugin_tables = []
+    
+    def start(self):
+        self.hbox = gtk.HBox(True, 0)
+        self.hbox.pack_start(self.info_frame, False, True, 0)
+        self.hbox.pack_start(self.plugin_frame, False, True, 0)
+        self.hbox.pack_start(self.graph_frame, True, True, 0)
+        self.hbox.show_all()
+        
+    def refresh(self):
+        self.analyzer = core.isAnalyzer()
+        
+        for child in self.info_frame.get_children():
+            self.info_frame.remove(child)
+        self.info_frame.set_label("Statistics")
+        # Get global statistics
+        global_stats = self.analyzer.getStats()
+        regex_stats = self.analyzer.getRegexStats()
+        plugins = global_stats[PLUGIN_DICT]
+        box = gtk.VBox(False, 0)
+        for plugin, amount in plugins.items():
+            table = gtk.Table(6, 2, True)
+            table.attach(gtk.Label("Plugin: "), 0, 1, 0, 1)
+            table.attach(gtk.Label(plugin.getName()), 1, 2, 0, 1)
+            table.attach(gtk.Label("Payloads: "), 0, 1, 1, 2)
+            table.attach(gtk.Label(amount), 1, 2, 1, 2)
+            table.attach(gtk.Label("Description: "), 0, 1, 2, 3)
+            table.attach(gtk.Label(plugin.getDescription()), 1, 2, 2, 3, xoptions=gtk.SHRINK)
+            table.attach(gtk.Label("Regex hits: "), 0, 1, 3, 4)
+            regex_cnt = regex_stats[PLUGIN_DICT][plugin] if regex_stats else 0  
+            table.attach(gtk.Label(str(regex_cnt)), 1, 2, 3, 4)
+            table.attach(gtk.Label("Payload hits: "), 0, 1, 4, 5)
+            payloads = '\n'.join(self.analyzer.getPayloadHits(plugin.getName()))
+            table.attach(gtk.Label(payloads), 1, 2, 4, 5, xoptions=gtk.SHRINK)
+            table.attach(gtk.Label("Parameters: "), 0, 1, 5, 6)
+            params = '\n'.join(global_stats[PARAMS_DICT])
+            table.attach(gtk.Label(params), 1, 2, 5, 6)
+            self.plugin_tables.append(table)
+        
+        for table in self.plugin_tables:    
+            box.pack_start(table, False, True, 0)
+            box.pack_start(gtk.HSeparator(), False, True, 0)
+        
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        sw.add_with_viewport(box)
+        self.info_frame.add(sw)
+        self.info_frame.show_all()
+        return True
 
-	def getWidget(self):
-		return self.vbox
-	
-	def changeOp(self, w):
-		model = w.get_model()
-		index = w.get_active()
-		if index:
-			op = model[index][0]
-			if op != self.selected_op or self.selected_op == '':
-				self.selected_op = op
-				self.renderInfo()
-			
-	def renderInfo(self):
-		if self.sw:
-			self.sw.destroy()
-		self.sw = gtk.ScrolledWindow()
-		self.sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-		frame = gtk.Frame("Properties")
-		params = self.wsdl.getParamsSchema(self.selected_op)
-		if params and len(params) > 0:
-			table = fwTable(self.wsdl.getParamsSchema(self.selected_op), self.wsdl.getParamsNames(self.selected_op))
-			frame.add(table.getWidget())
-		else:
-			frame.add(gtk.Label("This method has no parameters!"))
-		self.sw.add_with_viewport(frame)
-		self.sw.show_all()
-		self.vbox.pack_start(self.sw, True, True, 0)
-		self.vbox.show_all()	
-						
-class fwTable(IWidget):
-	def __init__(self, schemas, names):
-		rows = 0
-		for s in schemas:
-			if s.children() != []:
-				rows += len(s.children())
-			else:
-				rows += 1
-		self.table = gtk.Table(rows + 1, 6, True)
-		self.table.attach(gtk.Label("Maximum value allowed"), 1, 2, 0, 1)
-		self.table.attach(gtk.Label("Minimum value allowed"), 2, 3, 0, 1)
-		self.table.attach(gtk.Label("Is nillable? "), 3, 4, 0, 1)
-		self.table.attach(gtk.Label("Is optional? "), 4, 5, 0, 1)
-		self.table.attach(gtk.Label("Description "), 5, 6, 0, 1 )
-		
-		pos = 1
-		for s in schemas:
-			if s.children() != []:
-				for elem in s.children():
-					child = elem[0]		
-					self.table.attach(gtk.Label(child.name), 0, 1, pos, pos + 1)
-					self.table.attach(gtk.Label(str(child.max)), 1, 2, pos, pos + 1)
-					self.table.attach(gtk.Label(str(child.min)), 2, 3, pos, pos + 1)
-					img = gtk.Image()
-					if child.nillable:
-						img.set_from_stock(gtk.STOCK_APPLY, gtk.ICON_SIZE_BUTTON)
-					else:
-						img.set_from_stock(gtk.STOCK_CANCEL, gtk.ICON_SIZE_BUTTON)
-					img.show()
-					self.table.attach(img, 3, 4, pos, pos + 1)
-					img = gtk.Image()
-					if child.optional():
-						img.set_from_stock(gtk.STOCK_APPLY, gtk.ICON_SIZE_BUTTON)
-					else:
-						img.set_from_stock(gtk.STOCK_CANCEL, gtk.ICON_SIZE_BUTTON)
-					img.show()
-					self.table.attach(img, 4, 5, pos, pos + 1)
-					self.table.attach(gtk.Label(str(child.description())), 5, 6, pos, pos + 1)
-					pos += 1
-			else:
-				self.table.attach(gtk.Label(str(names[pos-1])), 0, 1, pos, pos + 1)
-				self.table.attach(gtk.Label(str(s.max)), 1, 2, pos, pos + 1)
-				self.table.attach(gtk.Label(str(s.min)), 2, 3, pos, pos + 1)
-				img = gtk.Image()
-				if s.nillable:
-					img.set_from_stock(gtk.STOCK_APPLY, gtk.ICON_SIZE_BUTTON)
-				else:
-					img.set_from_stock(gtk.STOCK_CANCEL, gtk.ICON_SIZE_BUTTON)
-				img.show()
-				self.table.attach(img, 3, 4, pos, pos + 1)
-				img = gtk.Image()
-				if s.optional():
-					img.set_from_stock(gtk.STOCK_APPLY, gtk.ICON_SIZE_BUTTON)
-				else:
-					img.set_from_stock(gtk.STOCK_CANCEL, gtk.ICON_SIZE_BUTTON)
-				img.show()
-				self.table.attach(img, 4, 5, pos, pos + 1)
-				self.table.attach(gtk.Label(str(s.description())), 5, 6, pos, pos + 1)
-				pos += 1
-	
-	def getWidget(self):
-		return self.table
-
+    def getWidget(self):
+        return self.hbox

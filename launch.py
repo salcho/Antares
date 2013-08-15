@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -W ignore::DeprecationWarning
 
 '''
 @author = Santiago Diaz - salchoman@gmail.com
@@ -11,7 +11,10 @@ from core.exceptions import antaresDependenciesException
 from core.fwCore import core
 import os
 import sys
+import warnings
 import argparse
+
+warnings.filterwarnings(action="ignore", category=DeprecationWarning)
 
 def mainPath():
 	"""

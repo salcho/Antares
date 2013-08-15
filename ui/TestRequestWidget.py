@@ -17,6 +17,7 @@ class TestRequestWidget(IWidget):
 	'''
 
 	def __init__(self):
+		IWidget.__init__(self)
 		self.oCombobox = None
 		self.opName = None
 		
@@ -58,7 +59,7 @@ class TestRequestWidget(IWidget):
 		sw = gtk.ScrolledWindow()
 		sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		self.TVRp = gtk.TextView(buffer=None)
-		self.TVRp.set_editable(False)
+		self.TVRp.set_editable(True)
 		self.TVRp.set_wrap_mode(gtk.WRAP_NONE)
 		self.TVRp.set_justification(gtk.JUSTIFY_LEFT)
 		self.TVRp.set_cursor_visible(True)
@@ -113,25 +114,29 @@ class TestRequestWidget(IWidget):
 			if self.opName != entry.get_text():
 				self.opName = entry.get_text()
 				self.inProcess.set_from_stock(gtk.STOCK_STOP, gtk.ICON_SIZE_BUTTON)
+				while gtk.events_pending():
+					gtk.main_iteration(False)
 				self.inProcess.show()
 				if core.iswsdlhelper():
 					wsdl = core.iswsdlhelper()
 					req, res = wsdl.getRqRx(self.opName)
-					while gtk.events_pending():
-						gtk.main_iteration(False)
-					if req and res:
+					#while gtk.events_pending():
+					#	gtk.main_iteration(False)
+					if req:
 						buf = self.TVRq.get_buffer()
 						buf.set_text(str(req))
+					else:
+						buf = self.TVRq.get_buffer()
+						buf.set_text('ERROR CREATING REQUEST')
+					if res:
 						buf = self.TVRp.get_buffer()
 						buf.set_text(str(res))
 					else:
-						if not req:
-							buf = self.TVRq.get_buffer()
-							buf.set_text('ERROR CREATING REQUEST')
-						if not res:
-							buf = self.TVRp.get_buffer()
-							buf.set_text('ERROR RECEIVING RESPONSE')
-					self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
+						buf = self.TVRp.get_buffer()
+						buf.set_text('ERROR RECEIVING RESPONSE')
+					
+					if req and res:	
+						self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
 					self.inProcess.show()
 
 	def refresh(self, widget):

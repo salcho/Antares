@@ -34,6 +34,15 @@ def checkDependencies():
 		logger.critical(msg)
 		failed_deps += 1
 		
+	try:
+		import pygtk_chart
+		logger.info("Success loading: [('pygtk_chart', %s)]" % pygtk_chart.__version__)
+	except ImportError:
+		msg = "Antares couldn't find pygtk_chart third-party library "
+		msg += "which will generates nice charts for us. "
+		logger.critical(msg)
+		failed_deps += 1
+		
 	if failed_deps:
 		raise antaresDependenciesException("%d dependencies aren't met" % failed_deps)
 		

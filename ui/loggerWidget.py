@@ -11,6 +11,7 @@ from core.log import addStreamHandler
 class loggerWidget(IWidget):
 	
 	def __init__(self):
+		IWidget.__init__(self)
 		self.frame = gtk.Frame('Logger')
 		self.text_view = None
 

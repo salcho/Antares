@@ -81,7 +81,6 @@ class projMan:
 			msg = 'Error: ' + e
 		else:
 			msg = 'OK'
-			logger.info("Loaded project %s" % name)
 		finally:
 			os.chdir(paths['main_path'])
 			return msg

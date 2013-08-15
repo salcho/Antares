@@ -8,15 +8,22 @@ import gtk
 from ui.confWidget import cfgWidget
 from ui.TestRequestWidget import TestRequestWidget
 from ui.injWidget import injWidget
+from ui.xsdWidget import xsdWidget
 from ui.analyzeWidget import analyzeWidget
-from ui.bfWidget import bfWidget
 from ui.loggerWidget import loggerWidget
+
+CONFIG_TAB = 0
+TESTREQ_TAB = 1
+INJECT_TAB = 2
+XSD_TAB = 3
+ANALYZE_TAB = 4
 
 class mainNotebook(gtk.Notebook):
     
     def __init__(self):
         self.conf = None
         self.notebook = None
+        self.tabs = []
         #self.notebook = gtk.Notebook()
         #self.notebook.set_tab_pos(gtk.POS_BOTTOM)
         #self.notebook.set_scrollable(scrollable=True)
@@ -27,23 +34,28 @@ class mainNotebook(gtk.Notebook):
         #Settings wdgt
         conf = cfgWidget()
         conf.start(proj, server)
+        self.tabs.append(conf)
         self.notebook.append_page(conf.getWidget(), gtk.Label('Settings'))
         #Test wdgt
         testwgt = TestRequestWidget()
         testwgt.start()
+        self.tabs.append(testwgt)
         self.notebook.append_page(testwgt.getWidget(), gtk.Label('Replay'))
         #Inject wdgt
         injwgt = injWidget()
         injwgt.start()
+        self.tabs.append(injwgt)
         self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injector'))
-        #Analyze wdgt
+        #XSD wdgt
+        xsdwgt = xsdWidget()
+        xsdwgt.start()
+        self.tabs.append(xsdwgt)
+        self.notebook.append_page(xsdwgt.getWidget(), gtk.Label('XSD reader'))
+        # wdgr
         anawgt = analyzeWidget()
         anawgt.start()
-        self.notebook.append_page(anawgt.getWidget(), gtk.Label('XSD Analyzer'))
-        #BF wdgr
-        bfwgt = bfWidget()
-        bfwgt.start()
-        self.notebook.append_page(bfwgt.getWidget(), gtk.Label('BruteForce'))
+        self.tabs.append(anawgt)
+        self.notebook.append_page(anawgt.getWidget(), gtk.Label('Analyzer'))
         #Log wdgt
         #logwgt = loggerWidget()
         #logwgt.start()
@@ -51,6 +63,9 @@ class mainNotebook(gtk.Notebook):
         
     def getNotebook(self):
         return self.notebook
+    
+    def getTabs(self):
+        return self.tabs
     
     def addPage(self, txt):
         self.notebook.append_page(DummyWidget(), txt)

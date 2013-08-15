@@ -10,13 +10,14 @@ class wsResponse:
         self.id = id
         self.params = params
         self.size = size
-        if response:
-            self.body = response[0]
-            self.http_code, self.response = response[1]
-        else:
-            self.body = None
-            self.http_code = -1
-            self.response = None
+        self.http_code = -1
+        self.response = None
+        
+        self.body = response[0] if response[0] else None
+        if response[1]:
+            self.http_code = response[1][0] if response[1][0] else -1
+            self.response = response[1][1] if response[1][1] else None
+        
         self.payload = payload
         self.plugin = plugin
         

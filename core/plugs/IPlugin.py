@@ -28,7 +28,7 @@ class IPlugin:
     """
     This function will check an wsResponse object parameter against any regexp
     """
-    def checkRegex(self, result):
+    def checkRegex(self, result, core):
         if not self.regex:
             raise antaresException("No regex initialized in plugin")
         
@@ -39,9 +39,9 @@ class IPlugin:
                 regexp = re.compile(pattern, re.IGNORECASE | re.DOTALL)
                 r = regexp.search(xml)
                 if r:
-                    logger.info("Found matching error message in payload %s. Body is %s" % (result.getPayload(), result.getBody()))
+                    logger.info("Found matching error message in payload %s." % result.getPayload())
                     # Report to analyzer!
-                    pass
+                    core.reportRegex(result)
             
     """
     This function will be called each time one of our payloads has been sent
@@ -49,7 +49,9 @@ class IPlugin:
     """
     def reportResult(self, result):
         body = result.getBody()
-        self.checkRegex(result)
+        # Have to remove this import from here!
+        from core.fwCore import core
+        self.checkRegex(result, core)
         return
             
     def getPayloads(self):
