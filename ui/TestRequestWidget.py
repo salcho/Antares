@@ -143,8 +143,6 @@ class TestRequestWidget(IWidget):
 					self.inProcess.show()
 
 	def refresh(self, widget):
-		print 'refresh ' + self.oCombobox
-		print 'destroy ' + self.oCombobox
 		ops = core.iswsdlhelper().getMethods()
 		self.oCombobox = gtk.combo_box_new_text()
 		self.oCombobox.append_text('')

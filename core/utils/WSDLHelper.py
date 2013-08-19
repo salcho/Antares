@@ -155,7 +155,7 @@ class WSDLHelper(object):
 		ret = set()
 		category = self.ws_client.factory.create('{' + type[1] + '}' + type[0])
 		for key in category.__keylist__:
-			ret.add(getattr(category, key))
+			ret.add(key)
 		return ret
 
 	def sendRaw(self, opName, xml):
@@ -257,11 +257,13 @@ class WSDLHelper(object):
 				else:
 					enums = self.findEnumerations(elem.type)
 					if len(enums) > 0:
+						tosend[name] = ''
 						for enum in enums:
 							tosend[name] += enum + '|'
 				
 		except Exception as e:
 			tosend = {}
+			raise antaresUnknownException("getParamObjs got unknown exception: " + e.message)
 		return tosend
 	
 	def getParams(self, opName):

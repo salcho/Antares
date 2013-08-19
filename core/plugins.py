@@ -83,12 +83,13 @@ class PluginManager(object):
             while not self.request_queue.empty():
                 per = 1-(float(self.request_queue.qsize())/size)
                 progress(percent=per, text=str(int(per*100)) + '%')
-    
+
         if self.response_list:
             # Report results to analyzer 
             core.initAnalyzer(self.response_list)
-            
-        return self.response_list
+            return self.response_list
+        
+        return None
     
     def stopAttack(self):
         for thread in self.thread_pool:

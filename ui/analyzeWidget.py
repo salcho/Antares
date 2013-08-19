@@ -33,11 +33,12 @@ class analyzeWidget(IWidget):
         
     def refresh(self):
         self.analyzer = core.isAnalyzer()
-        global_stats = self.analyzer.getStats()
-        
+        if self.analyzer:
+            global_stats = self.analyzer.getStats()
+        else:
+            global_stats = None
         self._refreshStatistics(global_stats)    
         self._refreshPlugins(global_stats)   
-        pass 
         return True
     
     def _refreshStatistics(self, global_stats):
@@ -58,7 +59,7 @@ class analyzeWidget(IWidget):
             table.attach(label, 1, 2, 1, 2)
             table.attach(gtk.Label("Payloads: "), 0, 1, 2, 3)
             amount = str(amount) if amount else 0
-            table.attach(gtk.Label(str(amount)), 1, 0, 2, 3)
+            table.attach(gtk.Label(amount), 1, 0, 2, 3)
             table.attach(gtk.Label("Regex hits: "), 0, 1, 3, 4)
             regex_cnt = str(regex_stats[PLUGIN_DICT][plugin]) if regex_stats else 0
             table.attach(gtk.Label(regex_cnt), 1, 2, 3, 4)
@@ -100,13 +101,14 @@ class analyzeWidget(IWidget):
         box.pack_start(chart, True, True, 0)
         
         regex_stats = self.analyzer.getRegexStats(None)
-        chart = pie_chart.PieChart()
-        chart.title.set_text("Errors found")
-        for plugin, count in regex_stats[PLUGIN_DICT].items():
-            area = pie_chart.PieArea(plugin.getName(), count, plugin.getName())
-            chart.add_area(area)
+        if regex_stats:
+            chart = pie_chart.PieChart()
+            chart.title.set_text("Errors found")
+            for plugin, count in regex_stats[PLUGIN_DICT].items():
+                area = pie_chart.PieArea(plugin.getName(), count, plugin.getName())
+                chart.add_area(area)
+            box.pack_start(chart, True, True, 0)
             
-        box.pack_start(chart, True, True, 0)
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         sw.add_with_viewport(box)

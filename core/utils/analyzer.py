@@ -21,6 +21,7 @@ class responseAnalyzer:
 
 
     def __init__(self):
+        logger.debug("Analyzer object instansiated")
         self.data = None
         self.count = -1
         self.plugins = {}
