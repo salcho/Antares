@@ -38,6 +38,9 @@ class Core(object):
 	
 	def initAnalyzer(self, data):
 		self.analyzer.start(data)
+		
+	def reportRegex(self, result):
+		self.analyzer.foundRegex(result)
 	
 	def getServerInfo(self):
 		return wsdlhelper.getHeaders()
@@ -60,9 +63,8 @@ class Core(object):
 		else:
 			return False
 		
-	'''
-	def isProjMan(self):
-			pass
-	'''
+	# This will call a function from the specified widget. No guarantees! xD
+	def callUI(self, widget, function):
+		self.gui.callFromWidget(widget, function)
 
 core = Core()

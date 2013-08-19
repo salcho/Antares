@@ -167,7 +167,7 @@ class injWidget(IWidget):
 			if plugin_name not in parent_iters:
 				parent_iters[plugin_name] = self.tree_model.append(None, [plugin_name, None, None, None, None, None, None])
 			
-			if response.getResponse():
+			if response.getBody():
 				self.tree_model.append(parent_iters[plugin_name], 
 									[None, 
 									response.getID(), 
@@ -175,14 +175,14 @@ class injWidget(IWidget):
 									response.getSize(), 
 									response.getHTTPCode(), 
 									response.getPayload(), 
-									response.getResponse()])
+									response.getBody()])
 		
 		# Setup TreeView
 		self.tmsort = gtk.TreeModelSort(self.tree_model)
 		self.tree_view = gtk.TreeView(self.tmsort)
-		tvcolumns={}
-		cells={}
-		i=0
+		tvcolumns = {}
+		cells = {}
+		i = 0
 		for col in ('Plugin','ID', 'Parameter', 'Size', 'HTTP Code', 'Payload', 'Response (truncated)'):	
 			tvcolumns[col] = gtk.TreeViewColumn(col)	
 			self.tree_view.append_column(tvcolumns[col])

@@ -113,7 +113,7 @@ class TestRequestWidget(IWidget):
 		if entry.get_text() != '':
 			if self.opName != entry.get_text():
 				self.opName = entry.get_text()
-				self.inProcess.set_from_stock(gtk.STOCK_STOP, gtk.ICON_SIZE_BUTTON)
+				self.inProcess.set_from_stock(gtk.STOCK_MEDIA_PLAY, gtk.ICON_SIZE_BUTTON)
 				while gtk.events_pending():
 					gtk.main_iteration(False)
 				self.inProcess.show()
@@ -137,6 +137,9 @@ class TestRequestWidget(IWidget):
 					
 					if req and res:	
 						self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
+					else:
+						self.inProcess.set_from_stock(gtk.STOCK_STOP, gtk.ICON_SIZE_BUTTON)
+						
 					self.inProcess.show()
 
 	def refresh(self, widget):

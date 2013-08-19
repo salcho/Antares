@@ -1,13 +1,18 @@
 #!/usr/bin/python
+ 
 
 class antaresException(Exception):
-	pass
+	def __init__(self, txt):
+		Exception.__init__(self, txt)
 
 class antaresLogException(antaresException):
-	pass		
-
+	def __init__(self, txt):
+		antaresException(txt)
+		
 class antaresDependenciesException(antaresException):
-	pass
+	def __init__(self, txt):
+		antaresException(txt)
 
-class antaresUnknownException(antaresException):
-	pass
+class antaresUnknownException(Exception):
+	def __init__(self, txt):
+		Exception.__init__(self, txt)

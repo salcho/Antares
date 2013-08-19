@@ -39,7 +39,7 @@ class CustomWindow():
 		
 		self._window = gtk.Window(gtk.WINDOW_TOPLEVEL)
 		self._window.set_title('Antares')
-		self._window.resize(1200, 650)
+		self._window.resize(1400, 650)
 		self._window.connect('delete_event', lambda w: gtk.main_quit)
 		self._window.connect('destroy', gtk.main_quit)
 		
