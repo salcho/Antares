@@ -157,45 +157,50 @@ class injWidget(IWidget):
 			self.frame_res.remove(child)
 		self.frame_res.set_label("Results")
 		
-		self.tree_model = gtk.TreeStore(str, str, str, str, str, str, str) 
-		# Sort results by ID
-		res_list = sorted(res_list, key=lambda plugin: plugin.getPlugin().getName())
-		# Fill the TreeModel
-		parent_iters = {}
-		for response in res_list:
-			plugin_name = response.getPlugin().getName()
-			if plugin_name not in parent_iters:
-				parent_iters[plugin_name] = self.tree_model.append(None, [plugin_name, None, None, None, None, None, None])
+		if res_list:
+			self.tree_model = gtk.TreeStore(str, str, str, str, str, str, str) 
+			# Sort results by ID
+			res_list = sorted(res_list, key=lambda plugin: plugin.getPlugin().getName())
+			# Fill the TreeModel
+			parent_iters = {}
+			for response in res_list:
+				plugin_name = response.getPlugin().getName()
+				if plugin_name not in parent_iters:
+					parent_iters[plugin_name] = self.tree_model.append(None, [plugin_name, None, None, None, None, None, None])
+				
+				if response.getBody():
+					self.tree_model.append(parent_iters[plugin_name], 
+										[None, 
+										response.getID(), 
+										response.getParams(), 
+										response.getSize(), 
+										response.getHTTPCode(), 
+										response.getPayload(), 
+										response.getBody()])
 			
-			if response.getBody():
-				self.tree_model.append(parent_iters[plugin_name], 
-									[None, 
-									response.getID(), 
-									response.getParams(), 
-									response.getSize(), 
-									response.getHTTPCode(), 
-									response.getPayload(), 
-									response.getBody()])
+			# Setup TreeView
+			self.tmsort = gtk.TreeModelSort(self.tree_model)
+			self.tree_view = gtk.TreeView(self.tmsort)
+			tvcolumns = {}
+			cells = {}
+			i = 0
+			for col in ('Plugin','ID', 'Parameter', 'Size', 'HTTP Code', 'Payload', 'Response (truncated)'):	
+				tvcolumns[col] = gtk.TreeViewColumn(col)	
+				self.tree_view.append_column(tvcolumns[col])
+				cells[col] = gtk.CellRendererText()
+				tvcolumns[col].pack_start(cells[col], True)
+				tvcolumns[col].add_attribute(cells[col], 'text', i)
+				i += 1
+			
+			# Make searchable
+			self.tree_view.set_search_column(1)
+			scrolled_window = gtk.ScrolledWindow()
+			scrolled_window.add_with_viewport(self.tree_view)
+			self.frame_res.add(scrolled_window)
+		else:
+			self.frame_res.add(gtk.Label("Kaput! The analyzer had no time to calculate statistics. Try lowering the number of attacking threads."))
 		
-		# Setup TreeView
-		self.tmsort = gtk.TreeModelSort(self.tree_model)
-		self.tree_view = gtk.TreeView(self.tmsort)
-		tvcolumns = {}
-		cells = {}
-		i = 0
-		for col in ('Plugin','ID', 'Parameter', 'Size', 'HTTP Code', 'Payload', 'Response (truncated)'):	
-			tvcolumns[col] = gtk.TreeViewColumn(col)	
-			self.tree_view.append_column(tvcolumns[col])
-			cells[col] = gtk.CellRendererText()
-			tvcolumns[col].pack_start(cells[col], True)
-			tvcolumns[col].add_attribute(cells[col], 'text', i)
-			i += 1
 		
-		# Make searchable
-		self.tree_view.set_search_column(1)
-		scrolled_window = gtk.ScrolledWindow()
-		scrolled_window.add_with_viewport(self.tree_view)
-		self.frame_res.add(scrolled_window)
 		self.frame_res.show_all()
 		
 	#---------------
@@ -247,9 +252,12 @@ class injWidget(IWidget):
 			
 			# Tell the analyzer to refresh this
 			from ui.fwNotebook import ANALYZE_TAB
-			core.callUI(ANALYZE_TAB, 'refresh')
+			ret = core.callUI(ANALYZE_TAB, 'refresh')
 			self.updateProgress(text='Done')
-			self.fillResultsFrame(res_list)
+			if ret:
+				self.fillResultsFrame(res_list)
+			else:
+				self.fillResultsFrame(None)
 			#return res_list
 		else:
 			if not self.selected_op:

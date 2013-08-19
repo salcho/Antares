@@ -34,9 +34,12 @@ from suds.client import TransportError
 from suds.sax.text import Raw
 from suds import WebFault
 from suds import null
+from suds import TypeNotFound
 
 from urllib2 import URLError
 from urlparse import urlparse
+
+from xml.sax._exceptions import SAXParseException
 
 import exceptions
 import urllib2
@@ -92,8 +95,16 @@ class WSDLHelper(object):
 			msg = "Error: Malformed URL\n" + url
 		except os.error:
 			msg = "Error: Can't write to offline WSDL file"
+		except SAXParseException as e:
+			msg = 'Error: Malformed WSDL. Are you sure you provided the correct WSDL path?'
+		except TypeNotFound as e:
+			msg = "Error: There is an import problem with this WSDL.\n We hope to add automatic fix for this in the future."
+			msg += "\nReference is: https://fedorahosted.org/suds/wiki/TipsAndTricks#Schema-TypeNotFound"
 		except Exception as e:
-			msg = 'Error: loadWSDL @ WSDLHelper ' + str(e) + '; ' + type(e)
+			msg = 'Error: unmanaged exception. Check stderr : ' + e.message
+			print e.__dict__
+			print type(e)
+			raise antaresUnknownException("Got unknown exception while loading wsdl at WSDLHelper: %s" % str(e.__dict__))
 	
 		# Check if we are ok	
 		if self.ws_client:
@@ -126,7 +137,7 @@ class WSDLHelper(object):
 			if not opName or not params or not payload:
 				return None
 			
-			tosend = {}
+			tosend = self.getParamObjs(opName)
 			for name, elem in self.getParams(opName):
 				if name in params:
 					tosend[name] = payload

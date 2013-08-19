@@ -21,8 +21,8 @@ class Core(object):
 		Main core function.
 		"""
 		logger.debug("Core module instansiated")
-		self.plugin_manager = plugins.PluginManager()
 		self.analyzer = responseAnalyzer()
+		self.plugin_manager = plugins.PluginManager()
 		self.gui = mainUI()
 	
 	def startUI(self):
@@ -65,6 +65,6 @@ class Core(object):
 		
 	# This will call a function from the specified widget. No guarantees! xD
 	def callUI(self, widget, function):
-		self.gui.callFromWidget(widget, function)
+		return self.gui.callFromWidget(widget, function)
 
 core = Core()

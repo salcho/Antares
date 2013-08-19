@@ -10,6 +10,7 @@ from core.utils.analyzer import PARAMS_DICT
 from core.utils.analyzer import PLUGIN_DICT
 from core.utils.analyzer import RSP_DICT
 from core.utils.analyzer import SIZE_DICT
+from core.data import logger
 from ui.IWidget import IWidget
 from lib.pygtk_chart import pie_chart
 import gtk
@@ -36,9 +37,11 @@ class analyzeWidget(IWidget):
         if self.analyzer:
             global_stats = self.analyzer.getStats()
         else:
-            global_stats = None
+            logger.error("Kaput! The analyzer has not calculated statistics yet. Try lowering the number of attacking threads.")
+            return False
         self._refreshStatistics(global_stats)    
-        self._refreshPlugins(global_stats)   
+        self._refreshPlugins(global_stats)  
+        self._refreshGraphs(global_stats)
         return True
     
     def _refreshStatistics(self, global_stats):
@@ -58,11 +61,12 @@ class analyzeWidget(IWidget):
             label.set_line_wrap(True)
             table.attach(label, 1, 2, 1, 2)
             table.attach(gtk.Label("Payloads: "), 0, 1, 2, 3)
-            amount = str(amount) if amount else 0
-            table.attach(gtk.Label(amount), 1, 0, 2, 3)
+            table.attach(gtk.Label(str(amount)), 1, 2, 2, 3)
             table.attach(gtk.Label("Regex hits: "), 0, 1, 3, 4)
-            regex_cnt = str(regex_stats[PLUGIN_DICT][plugin]) if regex_stats else 0
-            table.attach(gtk.Label(regex_cnt), 1, 2, 3, 4)
+            regex_cnt = "<b>%s</b>" % regex_stats[PLUGIN_DICT][plugin] if regex_stats else '<b>0</b>'
+            label = gtk.Label()
+            label.set_markup(regex_cnt)
+            table.attach(label, 1, 2, 3, 4)
             table.attach(gtk.Label("Payload hits: "), 0, 1, 4, 5)
             payloads = '\n'.join(self.analyzer.getPayloadHits(plugin.getName())[:15])
             entry = gtk.Entry(0)
@@ -95,25 +99,61 @@ class analyzeWidget(IWidget):
         for plugin, count in global_stats[PLUGIN_DICT].items():
             area = pie_chart.PieArea(plugin.getName(), count, plugin.getName())
             chart.add_area(area)
-        chart = pie_chart.PieChart()
-        chart.title.set_text("Payloads per plugin")
+
         #chart.background.set_color("#7A8386")
         box.pack_start(chart, True, True, 0)
         
         regex_stats = self.analyzer.getRegexStats(None)
-        if regex_stats:
+        if regex_stats:    
             chart = pie_chart.PieChart()
             chart.title.set_text("Errors found")
             for plugin, count in regex_stats[PLUGIN_DICT].items():
                 area = pie_chart.PieArea(plugin.getName(), count, plugin.getName())
                 chart.add_area(area)
             box.pack_start(chart, True, True, 0)
-            
+        
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         sw.add_with_viewport(box)
         self.plugin_frame.add(sw)
         self.plugin_frame.show_all()
+        return True
+    
+    def _refreshGraphs(self, global_stats):
+        for child in self.graph_frame:
+            self.graph_frame.remove(child)
+        self.graph_frame.set_label("Graphs")
+        box = gtk.VBox(True, 0)
+        
+        chart = pie_chart.PieChart()
+        chart.title.set_text("HTTP codes")
+        for code, count in global_stats[HTTP_DICT].items():
+            area = pie_chart.PieArea(str(code), count, str(code))
+            chart.add_area(area)
+        box.pack_start(chart, True, True, 0)
+        del chart
+        
+        chart = pie_chart.PieChart()
+        chart.title.set_text("Response bodies")
+        for response, count in global_stats[RSP_DICT].items():
+            area = pie_chart.PieArea(response[:20], count, response[:20])
+            chart.add_area(area)
+        box.pack_start(chart, True, True, 0)
+        del chart
+        
+        chart = pie_chart.PieChart()
+        chart.title.set_text("Response sizes")
+        for size, count in global_stats[SIZE_DICT].items():
+            area = pie_chart.PieArea(str(size), count, str(size))
+            chart.add_area(area)
+        box.pack_start(chart, True, True, 0)
+        del chart
+       
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        sw.add_with_viewport(box)
+        self.graph_frame.add(sw)
+        self.graph_frame.show_all()
         return True
         
     def chartRotate(self, range, scroll, value, chart):

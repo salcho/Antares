@@ -36,12 +36,11 @@ class responseAnalyzer:
         if not res_list:
             raise antaresException("Can't initialize responseAnalyzer without a set of data")
         
+        self.inuse = True
         self.data = sorted(res_list, key=lambda id: id.getPlugin().getName())
         
         self.matched = []
         self.count = len(self.data)
-        self.inuse = True
-        
         self.stats = self.countUnique()
     
     """    

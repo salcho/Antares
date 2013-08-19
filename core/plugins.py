@@ -79,11 +79,15 @@ class PluginManager(object):
                     #print 'Got response [%d]: %10s' % (sys.getsizeof(response), response)
     
         # Wait till everyone finishes, update progress bar meanwhile
-        if progress:
-            while not self.request_queue.empty():
+        try:
+            per = 0
+            #while not self.request_queue.empty():
+            while per != 1:
                 per = 1-(float(self.request_queue.qsize())/size)
                 progress(percent=per, text=str(int(per*100)) + '%')
-
+        except:
+            pass
+        
         if self.response_list:
             # Report results to analyzer 
             core.initAnalyzer(self.response_list)
@@ -135,9 +139,7 @@ class attackThread(threading.Thread):
     def run(self):
         while True:
             [req_id, (args, payload)] = self.queue.get()
-            if not payload or not args or not req_id:
-                self.queue.task_done()
-            else:
+            if payload and args and req_id:
                 resp_object = self.wsdl.customRequest(self.op_name, args, payload)
                 if resp_object[0]:
                     response = wsResponse(id=req_id, params=args, size=sys.getsizeof(resp_object[0]), response=resp_object, payload=payload, plugin=self.get_plugin(payload))
@@ -146,8 +148,10 @@ class attackThread(threading.Thread):
                     plugin.reportResult(response)
                     self.out_list.append(response)
                 else:
-                    self.queue.task_done()
+                    self.out_list.append(None)
                     logger.error("Empty response! Error sending request ->  Args are: %s ; Payload is: %s" % (args, payload))
+                
+            self.queue.task_done()
                     
     def stop(self):
         self._stop.set()
