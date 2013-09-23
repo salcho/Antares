@@ -6,6 +6,7 @@ Created on Jan 19, 2013
 
 import pygtk
 import gtk
+import cPickle 
 from core.utils.project_manager import project_manager
 
 class mainUI(object):
@@ -153,6 +154,7 @@ class CustomWindow():
 			chkbtn = gtk.CheckButton('Read WSDL from file?')
 			chkbtn.connect("toggled", self.readFrom)
 			chkbtn.set_active(True)
+			
 			frame.add(vbox)
 			dialog.vbox.pack_start(frame, True, True, 0)
 			dialog.vbox.pack_start(chkbtn, True, True, 0)
@@ -170,6 +172,7 @@ class CustomWindow():
 
 				# Create WSDLHelper object
 				from core.fwCore import core
+				self.core = core
 				if core.loadWSDL(self.currProject):
 					self.addNotebook()
 					self.vbox.show_all()
@@ -182,10 +185,6 @@ class CustomWindow():
 			dialog.destroy()
 			
 	def addNotebook(self):
-			if not self.notebook:
-				self.initNotebook()
-			else:
-				self.notebook.destroy()
 				self.initNotebook()
 				
 				# Delete and restore main vbox. Is there a better way to do this?
@@ -193,17 +192,14 @@ class CustomWindow():
 					self.vbox.remove(child)
 				self.vbox.pack_start(self.menu_bar, False, False, 0)
 				self.vbox.pack_start(self.toolbar, expand=False)
-				
-			self.vbox.pack_start(self.notebook, True, True, 0)
+				self.vbox.pack_start(self.main_notebook.getNotebook(), True, True, 0)
 
 	def initNotebook(self):
 		from ui.fwNotebook import mainNotebook
 		self.main_notebook = mainNotebook()
-		from core.fwCore import core
-		if core.iswsdlhelper():
+		if self.core.iswsdlhelper():
 			# Get settings, populate notebook
-			self.main_notebook.populate(project_manager.getCurrentSettings(), core.getServerInfo())
-			self.notebook = self.main_notebook.getNotebook()
+			self.main_notebook.populate(project_manager.getCurrentSettings(), self.core.getServerInfo())
 			
 	def projSelected(self, widget, action):
 			self.currProject = action
@@ -247,10 +243,16 @@ class CustomWindow():
 		return self.main_notebook
 	
 	def toDelete(self, w, name):
-			self.todelete = name
+		self.todelete = name
 	
-	def saveProject(self):
+	def saveProject(self, w):
+		try:
+			if project_manager.saveProject(self.core.getServerInfo()):
+				self.showMessageDialog("Project saved!")
+			else:
+				self.showErrorDialog("Error: Project couldn't be saved. You sure we have write permission on the file?")
+		except:
 			pass
-	
+			
 	def getWindow(self):
 			return self._window

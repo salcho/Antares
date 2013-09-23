@@ -8,6 +8,7 @@ from core.data import wsdl_name
 from core.data import settings_name
 from core.data import logger
 from core.data import paths
+from collections import defaultdict
 import os
 import exceptions
 import urllib2
@@ -21,9 +22,10 @@ class projMan:
 		self.proj_url = ''
 	
 		#Settings dict
-		self.currSettings = {'name': None, 'url': None, 'user': None, 'password': None}
+		self.currSettings = {}
+		self.currSettings['control'] = {'name': None, 'url': None, 'user': None, 'password': None}
+		self.currSettings['server'] = {}
 		self.currWSDL = None
-		self.headers = None
 		logger.debug("Project manager instansiated")
 	
 	def createProject(self, name, url):
@@ -40,8 +42,8 @@ class projMan:
 			wsdl_file.close()
 			
 			sett_file = open(settings_name, 'w')
-			self.currSettings['name'] = name
-			self.currSettings['url'] = url
+			self.currSettings['control']['name'] = name
+			self.currSettings['control']['url'] = url
 			sett_file.write(pickle.dumps(self.currSettings))
 			sett_file.close()
 		except os.error as e:   
@@ -69,7 +71,7 @@ class projMan:
 			self.currSettings = pickle.load(open(settings_name, 'rb'))
 			
 			# Load control structures
-			self.currSettings['name'] = name
+			self.currSettings['control']['name'] = name
 			self.proj_name = name
 			
 			# Load WSDL in memory
@@ -89,10 +91,15 @@ class projMan:
 		"""
 		Dump pickle according to currSettings dict
 		"""
-		for key in d.keys():
-			self.currSettings[key] = d[key]
-		fh = open(self.getSettingsPath(), 'w')
-		fh.write(pickle.dumps(self.currSettings))
+		try:
+			for key in d.keys():
+				self.currSettings['server'][key] = d[key]
+			fh = open(self.getSettingsPath(), 'w')
+			fh.write(pickle.dumps(self.currSettings))
+			fh.close()
+		except:
+			return False
+		return True
 		
 	def projList(self):
 		path = paths['main_path'] + os.path.sep + paths['projects_dir']
@@ -107,16 +114,16 @@ class projMan:
 			print 'deleteProject @ pm: ' + str(e)
 	
 	def getCurrentSettings(self):
-		return self.currSettings
+		return self.currSettings['control']
 	
 	def getURL(self):
-		return self.currSettings['url']
+		return self.currSettings['control']['url']
 	
 	def getWSDLPath(self):
 		return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.proj_name + os.path.sep + wsdl_name
 	
 	def getSettingsPath(self):
-		return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.currSettings['name'] + os.path.sep + settings_name
+		return paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + self.currSettings['control']['name'] + os.path.sep + settings_name
 	
 	def getWSDLContents(self):
 		fh = open(self.getWSDLPath(), 'r')

@@ -29,6 +29,7 @@ class mainNotebook(gtk.Notebook):
         #self.notebook.set_scrollable(scrollable=True)
         
     def populate(self, proj, server):
+        del self.notebook
         self.notebook = gtk.Notebook()
         self.notebook.set_tab_pos(gtk.POS_BOTTOM)
         #Settings wdgt

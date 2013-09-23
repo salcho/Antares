@@ -34,6 +34,8 @@ class Core(object):
 		if 'Error' in ret:
 			self.gui.showError(ret)
 			return False
+		if 'Warning' in ret:
+			self.gui.showError(ret)
 		return True
 	
 	def initAnalyzer(self, data):

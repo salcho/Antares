@@ -63,7 +63,8 @@ class WSDLHelper(object):
 		#control variables
 		self.serviceName = ''
 		self.portName = ''
-		self.is_loaded = False
+		#online/offline switch
+		self.is_offline = True
 		logger.debug("WSDLHelper object instansiated")
 		
 	# ---------------------------------
@@ -81,39 +82,39 @@ class WSDLHelper(object):
 		"""
 		try:
 			msg = ''
+			self.ws_client = Client(url, faults=True, prettyxml=True)
+			self.setup()
+			if self.ws_client:
+				msg = 'OK'
+				logger.info("Created WSDL helper for %s" % url)
 			if url.startswith('file'):
 				self.server_client = urllib2.urlopen(project_manager.getURL())
 				logger.info("Loaded wsdl from local path %s" % project_manager.getWSDLPath())
 			else:
 				self.server_client = urllib2.urlopen(project_manager.getURL())
 				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
-			self.ws_client = Client(url, faults=True, prettyxml=True)
-			self.setup()
 		except URLError:
-			msg = "Error: Can't connect to " + url
+			msg = "\tWarning:\nWasn't able to connect to target.\nAntares is running in offline mode now."
 		except exceptions.ValueError:
 			msg = "Error: Malformed URL\n" + url
 		except os.error:
-			msg = "Error: Can't write to offline WSDL file"
+			msg = "Error: Can't read offline WSDL file"
 		except SAXParseException as e:
 			msg = 'Error: Malformed WSDL. Are you sure you provided the correct WSDL path?'
 		except TypeNotFound as e:
 			msg = "Error: There is an import problem with this WSDL.\n We hope to add automatic fix for this in the future."
 			msg += "\nReference is: https://fedorahosted.org/suds/wiki/TipsAndTricks#Schema-TypeNotFound"
 		except Exception as e:
-			msg = 'Error: unmanaged exception. Check stderr : ' + e.message
+			msg = 'FATAL: unmanaged exception. Check stderr : ' + e.message
 			print e.__dict__
 			print type(e)
-			raise antaresUnknownException("Got unknown exception while loading wsdl at WSDLHelper: %s" % str(e.__dict__))
+			raise antaresUnknownException("Got unknown exception while loading wsdl at WSDLHelper: %s" % str(e) )
 	
-		# Check if we are ok	
-		if self.ws_client:
-			msg = 'OK'
-			self.is_loaded = True
-			logger.info("Success loading WSDL from %s" % url)
-			
-		if not self.is_loaded:
-			logger.error("Failed loading WSDL from %s" % url)
+		# Check how we'll run
+		if self.server_client:
+			self.is_offline = False	
+		else:
+			logger.error("Running in offline mode on %s" % url)
 		return msg
 	
 	def setup(self):
@@ -178,8 +179,9 @@ class WSDLHelper(object):
 			getattr(self.ws_client.service, opName)(__inject={'msg':xml})
 			res = self.ws_client.messages['rx']
 		except WebFault as wf:
-			logger.error("Got WebFault sending raw request: %s", wf.message)
-			res = str(wf.message)
+			#logger.error("Got WebFault sending raw request: %s", wf.message)
+			res = str(wf.fault)
+			raise Exception(wf.message)
 		except Exception as e:
 			self.processException(e)
 		return res
@@ -216,14 +218,16 @@ class WSDLHelper(object):
 		a general Exception. Suds will raise some of these with authentication messages.
 		This function will return the HTTP code error int
 		"""
-		msg = except_obj.message
-		# HTTP Authentication here
-		if u'Unauthorized' in msg[1]:
-			# Tell everyone 
-			logger.error("Got HTTP code 401, please specify HTTP credentials in the config tab!")
-			return 401
-		else:
-			logger.error("Unknown exception pat porcessException. Data is: %s" % msg)
+		try:
+			msg = except_obj.message
+			print except_obj.strerror
+			# HTTP Authentication here
+			if u'Unauthorized' in msg[1]:
+				# Tell everyone 
+				logger.error("Got HTTP code 401, please specify HTTP credentials in the config tab!")
+				return 401
+		except:
+			logger.error("Unknown exception at processException. Data is: %s" % except_obj.__dict__)
 		
 	# ------------------
 	# Getters and setters
@@ -327,7 +331,10 @@ class WSDLHelper(object):
 		"""
 		Create dictionary to show server's properties in UI
 		"""
-		return self.server_client.headers.dict
+		try:
+			return self.server_client.headers.dict
+		except:
+			return project_manager.currSettings['server'] 
 
 	def setPort(self, pName):
 		if pName != '':
@@ -342,7 +349,7 @@ class WSDLHelper(object):
 	def getServerClient(self):
 		return self.server_client
 
-	def is_loaded(self):
-		return self.is_loaded
+	def is_offline(self):
+		return self.is_offline
 
 wsdlhelper = WSDLHelper()

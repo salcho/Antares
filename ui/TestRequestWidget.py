@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from core.fwCore import core
 from core.utils.project_manager import project_manager
 from ui.IWidget import IWidget
+from suds import WebFault
 
 class TestRequestWidget(IWidget):
 	'''
@@ -97,17 +98,21 @@ class TestRequestWidget(IWidget):
 		self.inProcess.show()
 		buf = self.TVRq.get_buffer()
 		start, end = buf.get_bounds()
-		if core.iswsdlhelper():
-			wsdl = core.iswsdlhelper()
-			xml = wsdl.sendRaw(self.opName, buf.get_text(start, end))
-			while gtk.events_pending():
-				gtk.main_iteration(False)
-
-			buf = self.TVRp.get_buffer()
-			buf.set_text(str(xml))
-			
-			self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
-			self.inProcess.show()
+		wsdl = core.iswsdlhelper()
+		if wsdl:
+			try:
+				xml = wsdl.sendRaw(self.opName, buf.get_text(start, end))
+				while gtk.events_pending():
+					gtk.main_iteration(False)
+	
+				buf = self.TVRp.get_buffer()
+				buf.set_text(str(xml))
+				
+				self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
+				self.inProcess.show()
+			except Exception as e:
+				buf = self.TVRp.get_buffer()
+				buf.set_text(str(e))
 
 	def changeOp(self, entry):
 		if entry.get_text() != '':
@@ -120,20 +125,10 @@ class TestRequestWidget(IWidget):
 				if core.iswsdlhelper():
 					wsdl = core.iswsdlhelper()
 					req, res = wsdl.getRqRx(self.opName)
-					#while gtk.events_pending():
-					#	gtk.main_iteration(False)
-					if req:
-						buf = self.TVRq.get_buffer()
-						buf.set_text(str(req))
-					else:
-						buf = self.TVRq.get_buffer()
-						buf.set_text('ERROR CREATING REQUEST')
-					if res:
-						buf = self.TVRp.get_buffer()
-						buf.set_text(str(res))
-					else:
-						buf = self.TVRp.get_buffer()
-						buf.set_text('ERROR RECEIVING RESPONSE')
+					buf = self.TVRq.get_buffer()
+					buf.set_text(str(res)) if res else buf.set_text('ERROR CREATING REQUEST')
+					buf = self.TVRp.get_buffer()
+					buf.set_text(str(res)) if res else buf.set_text('ERROR CREATING RESPONSE')
 					
 					if req and res:	
 						self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
