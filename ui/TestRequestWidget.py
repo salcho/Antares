@@ -126,7 +126,7 @@ class TestRequestWidget(IWidget):
 					wsdl = core.iswsdlhelper()
 					req, res = wsdl.getRqRx(self.opName)
 					buf = self.TVRq.get_buffer()
-					buf.set_text(str(res)) if res else buf.set_text('ERROR CREATING REQUEST')
+					buf.set_text(str(req)) if req else buf.set_text('ERROR CREATING REQUEST')
 					buf = self.TVRp.get_buffer()
 					buf.set_text(str(res)) if res else buf.set_text('ERROR CREATING RESPONSE')
 					

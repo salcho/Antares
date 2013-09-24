@@ -153,15 +153,19 @@ class CustomWindow():
 					vbox.pack_start(b, True, True, 0)
 			chkbtn = gtk.CheckButton('Read WSDL from file?')
 			chkbtn.connect("toggled", self.readFrom)
-			chkbtn.set_active(True)
+			chkbtn.set_active(False)
+			savewsdl_btn = gtk.CheckButton("Save WSDL automatically?")
+			savewsdl_btn.connect("toggled", self.saveWSDL)
+			savewsdl_btn.set_active(True)
 			
 			frame.add(vbox)
 			dialog.vbox.pack_start(frame, True, True, 0)
 			dialog.vbox.pack_start(chkbtn, True, True, 0)
+			dialog.vbox.pack_start(savewsdl_btn, True, True, 0)
 			dialog.show_all()
 			rsp = dialog.run()
 			if rsp == gtk.RESPONSE_OK:
-				ret = project_manager.loadProject(self.currProject)
+				ret = project_manager.loadProject(self.currProject, savewsdl_btn.get_active(), chkbtn.get_active())
 				if 'Error' in ret:
 					self.showErrorDialog(ret)
 
@@ -169,7 +173,7 @@ class CustomWindow():
 					self.currProject = 'file://' + project_manager.getWSDLPath()
 				else:
 					self.currProject = project_manager.getURL()
-
+					
 				# Create WSDLHelper object
 				from core.fwCore import core
 				self.core = core
@@ -202,10 +206,13 @@ class CustomWindow():
 			self.main_notebook.populate(project_manager.getCurrentSettings(), self.core.getServerInfo())
 			
 	def projSelected(self, widget, action):
-			self.currProject = action
+		self.currProject = action
 
 	def readFrom(self, widget):
-			pass
+		pass
+		
+	def saveWSDL(self, widget):
+		pass
 	
 	def deleteProject(self, widget):
 		dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))

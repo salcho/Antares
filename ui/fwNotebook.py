@@ -42,17 +42,17 @@ class mainNotebook(gtk.Notebook):
         testwgt.start()
         self.tabs.append(testwgt)
         self.notebook.append_page(testwgt.getWidget(), gtk.Label('Replay'))
-        #Inject wdgt
-        injwgt = injWidget()
-        injwgt.start()
-        self.tabs.append(injwgt)
-        self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injector'))
         #XSD wdgt
         xsdwgt = xsdWidget()
         xsdwgt.start()
         self.tabs.append(xsdwgt)
         self.notebook.append_page(xsdwgt.getWidget(), gtk.Label('XSD reader'))
-        # wdgr
+        #Inject wdgt
+        injwgt = injWidget()
+        injwgt.start()
+        self.tabs.append(injwgt)
+        self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injector'))
+        #Analyze wdgt
         anawgt = analyzeWidget()
         anawgt.start()
         self.tabs.append(anawgt)

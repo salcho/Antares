@@ -29,7 +29,7 @@ class Core(object):
 		self.gui.start()
 		
 	def loadWSDL(self, url):
-			#TODO: Change URL to any stream
+		#TODO: Change URL to any stream
 		ret = wsdlhelper.loadWSDL(url)
 		if 'Error' in ret:
 			self.gui.showError(ret)

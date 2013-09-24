@@ -21,11 +21,12 @@ class projMan:
 		self.proj_name = ''
 		self.proj_url = ''
 	
-		#Settings dict
+		#currSettings is a dictionary with keys [control,server] which values are as presented in the config widget
 		self.currSettings = {}
 		self.currSettings['control'] = {'name': None, 'url': None, 'user': None, 'password': None}
 		self.currSettings['server'] = {}
-		self.currWSDL = None
+		#automatic wsdl save flag
+		self.save_flag = False
 		logger.debug("Project manager instansiated")
 	
 	def createProject(self, name, url):
@@ -59,14 +60,16 @@ class projMan:
 			os.chdir(paths['main_path'])
 		return msg
 	
-	def loadProject(self, name):
+	def loadProject(self, name, save_wsdl, from_file):
 		"""
 		Load currSettings with the new pickle load, this function MUST be called before updating core, notebook, etc
+		save_wsdl flag to save the last downloaded WSDL automatically into project
+		from_file flag to actually read the WSDL from the offline copy
 		"""
 
 		try:
 			msg = ''
-			os.chdir(paths['projects_dir'] + os.path.sep + name)
+			os.chdir(paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + name)
 			# Load pickle file
 			self.currSettings = pickle.load(open(settings_name, 'rb'))
 			
@@ -75,9 +78,16 @@ class projMan:
 			self.proj_name = name
 			
 			# Load WSDL in memory
-			fh = open(wsdl_name, 'r')
-			self.currWSDL = fh.read()
-			fh.close()
+			if from_file:
+				fh = open(wsdl_name, 'r')
+				fh.close()
+			else:
+				# Save to disk?
+				if save_wsdl:
+					fh = open(wsdl_name, 'w')
+					wsdl = urllib2.urlopen(self.getURL())
+					fh.write(wsdl.read())
+					fh.close()
 			
 		except Exception as e:
 			msg = 'Error: ' + e
@@ -97,6 +107,10 @@ class projMan:
 			fh = open(self.getSettingsPath(), 'w')
 			fh.write(pickle.dumps(self.currSettings))
 			fh.close()
+			if self.save_flag:
+				fh = open(self.getWSDLPath(), 'w')
+				wsdl = urllib2.urlopen(url)
+				pass
 		except:
 			return False
 		return True

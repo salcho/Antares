@@ -82,16 +82,16 @@ class WSDLHelper(object):
 		"""
 		try:
 			msg = ''
-			self.ws_client = Client(url, faults=True, prettyxml=True)
+			self.ws_client = Client(url, faults=True, prettyxml=True, cache=None)
 			self.setup()
 			if self.ws_client:
 				msg = 'OK'
 				logger.info("Created WSDL helper for %s" % url)
+			
+			self.server_client = urllib2.urlopen(project_manager.getURL())
 			if url.startswith('file'):
-				self.server_client = urllib2.urlopen(project_manager.getURL())
 				logger.info("Loaded wsdl from local path %s" % project_manager.getWSDLPath())
 			else:
-				self.server_client = urllib2.urlopen(project_manager.getURL())
 				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
 		except URLError:
 			msg = "\tWarning:\nWasn't able to connect to target.\nAntares is running in offline mode now."
