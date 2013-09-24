@@ -5,7 +5,6 @@ from core.exceptions import antaresDependenciesException
 
 def checkDependencies():
 	failed_deps = 0
-
 	try:
 		import suds
 		logger.info("Success loading: [('suds', %s)]" % suds.__version__)

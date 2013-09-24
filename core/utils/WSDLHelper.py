@@ -5,6 +5,7 @@ Created on Jan 20, 2013
 '''
 
 from core.utils.project_manager import project_manager
+from core.utils.project_manager import AUTH_BASIC
 from core.data import logger
 from core.exceptions import antaresUnknownException
 
@@ -79,22 +80,44 @@ class WSDLHelper(object):
 	        ports = (port, [methods])
         	ports = (port, [(name, [args])])
 	        ports = (port, [name, [(type, name)]])
+	        
+	    Default HTTP timeout is set from command line or 100 seconds if not specified
 		"""
 		try:
 			msg = ''
-			self.ws_client = Client(url, faults=True, prettyxml=True, cache=None)
+			# Does this project uses basic authentication?
+			if project_manager.getAuthType() == AUTH_BASIC:
+				if project_manager.getUsername() and project_manager.getPassword():
+						# Create ws_client and server_client using saved credentials
+						self.ws_client = Client(url, username=project_manager.getUsername(), password=project_manager.getPassword())
+						request = project_manager.createAuthorizationRequest(project_manager.getUsername(), 
+																project_manager.getPassword(), 
+																url,
+																project_manager.getDomain())
+						self.server_client = urllib2.urlopen(request)
+			else:
+				# Or fallback to regular connections
+				self.ws_client = Client(url, faults=True, prettyxml=True, cache=None)
+				self.server_client = urllib2.urlopen(project_manager.getURL())
+			
 			self.setup()
+			
 			if self.ws_client:
 				msg = 'OK'
-				logger.info("Created WSDL helper for %s" % url)
-			
-			self.server_client = urllib2.urlopen(project_manager.getURL())
+				logger.info("WSDL helper is: %s" % self.ws_client)
 			if url.startswith('file'):
 				logger.info("Loaded wsdl from local path %s" % project_manager.getWSDLPath())
 			else:
 				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
-		except URLError:
-			msg = "\tWarning:\nWasn't able to connect to target.\nAntares is running in offline mode now."
+		except URLError as e:
+			try:
+				if e.code == 401:
+					msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
+					logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+																						project_manager.getPassword(), 
+																						project_manager.getName()))
+			except:
+				msg = "\tWarning:\nWasn't able to connect to target.\nAntares is running in offline mode now."
 		except exceptions.ValueError:
 			msg = "Error: Malformed URL\n" + url
 		except os.error:
@@ -332,9 +355,12 @@ class WSDLHelper(object):
 		Create dictionary to show server's properties in UI
 		"""
 		try:
-			return self.server_client.headers.dict
+			if self.is_offline:
+				return project_manager.currSettings['server'] 
+			else:
+				return self.server_client.headers.dict
 		except:
-			return project_manager.currSettings['server'] 
+			return self.server_client.headers.dict
 
 	def setPort(self, pName):
 		if pName != '':

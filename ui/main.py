@@ -8,6 +8,8 @@ import pygtk
 import gtk
 import cPickle 
 from core.utils.project_manager import project_manager
+from core.utils.project_manager import AUTH_BASIC
+from core.exceptions import antaresException
 
 class mainUI(object):
 	
@@ -97,40 +99,52 @@ class CustomWindow():
 		self._window.show_all()
 	
 	def createProject(self, action):
-		# TODO: Support auth
 		dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
 		dialog.vbox.pack_start(gtk.Label("Name"), True, True, 0)
-		name = gtk.Entry(20)		   
+		name = gtk.Entry(0)		   
 		dialog.vbox.pack_start(name, True, True, 0)
 		dialog.vbox.pack_start(gtk.Label("Initial WSDL URL"), True, True, 0)
 		url = gtk.Entry(0)		   
 		dialog.vbox.pack_start(url, True, True, 0)
 		dialog.show_all() 
+		
 		rsp = dialog.run()
-		# dialog.hide()
 		if rsp == gtk.RESPONSE_OK:
 			if name.get_text() != '' and url.get_text() != "":
-				ret = project_manager.createProject(name.get_text(), url.get_text())
-				if "Error" in ret:
+				if not url.get_text().lower().startswith('http') or url.get_text().lower().startswith('https'):
+					self.showErrorDialog('Correct URLs must begin with HTTP or HTTPS protocols.')
+					dialog.destroy()
+					return 
+				ret = project_manager.detectProtocolAuth(url.get_text())
+				if ret:
+					# Basic auth!
+					if ret == 401:
+						auth_dict = self.showBasicAuthDialog()
+					# Something wrong happened
+					else:
+						if 'timed out' in ret:
+							self.showErrorDialog('Connection to target timed out. Can you really connect to given port?')
+						elif 'connection refused' in ret.lower():
+							self.showErrorDialog('Connection refused while connecting with server. You sure server is up?')
+						elif 'no route to host' in ret.lower():
+							self.showErrorDialog('No route to host. Check IP address!')
+						dialog.destroy()
+						return
+					
+				if ret and auth_dict:
+					ret = project_manager.createProject(name.get_text(), url.get_text(), auth_dict=auth_dict)
+				elif ret and not auth_dict:
+					self.showErrorDialog('Please specify a valid set of credentials...')
+					dialog.destroy()
+					return
+				else:
+					ret = project_manager.createProject(name.get_text(), url.get_text())
+				if "error" in ret.lower():
 					self.showErrorDialog(ret)
 				else:
 					self.showMessageDialog("Project created!")
 	
 		dialog.destroy()
-	
-	def showErrorDialog(self, txt):
-		diag = gtk.Dialog("Error", None, gtk.DIALOG_MODAL, (gtk.STOCK_OK, gtk.RESPONSE_OK))
-		diag.vbox.pack_start(gtk.Label(txt), True, True, 0)
-		diag.show_all()
-		diag.run()
-		diag.destroy()
-
-	def showMessageDialog(self, txt):
-		diag = gtk.Dialog("Information", None, gtk.DIALOG_MODAL, (gtk.STOCK_OK, gtk.RESPONSE_OK))
-		diag.vbox.pack_start(gtk.Label(txt), True, True, 0)
-		diag.show_all()
-		diag.run()
-		diag.destroy()
 		
 	def loadProject(self, action):
 		dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
@@ -138,7 +152,6 @@ class CustomWindow():
 		frame.set_shadow_type(gtk.SHADOW_ETCHED_IN)
 		projs = project_manager.projList()
 		if projs:
-			# self.vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
 			vbox = gtk.VBox(True, 0)
 			if len(projs) > 1:
 					group = gtk.RadioButton(group=None, label=None)
@@ -244,6 +257,46 @@ class CustomWindow():
 			dialog.destroy()
 		else:
 			dialog.destroy()
+			
+	def showBasicAuthDialog(self):
+		realm = gtk.Entry(0)
+		username = gtk.Entry(0)
+		password = gtk.Entry(0)
+		dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_OK, gtk.RESPONSE_OK))
+		dialog.vbox.pack_start(gtk.Label("Basic authentication required to download WSDL object.\nPlease enter credentials below.\n"), True, True, 0)
+		dialog.vbox.pack_start(gtk.Label("Realm (optional)"), True, True, 0)		   
+		dialog.vbox.pack_start(realm, True, True, 0)
+		dialog.vbox.pack_start(gtk.Label("Username"), True, True, 0)
+		dialog.vbox.pack_start(username, True, True, 0)
+		dialog.vbox.pack_start(gtk.Label("Password"), True, True, 0)		   
+		dialog.vbox.pack_start(password, True, True, 0)
+		dialog.show_all()
+		rsp = dialog.run()
+		if rsp == gtk.RESPONSE_OK:
+			if username.get_text() and password.get_text():
+				# Tell given credentials using the self.currSettings['auth'] structure in project_manager
+				auth_dict = {'type': AUTH_BASIC, 
+							'domain': realm.get_text(), 
+							'user': username.get_text(), 
+							'password': password.get_text()}
+				dialog.destroy()
+				return auth_dict
+		dialog.destroy()
+		return None
+	
+	def showErrorDialog(self, txt):
+		diag = gtk.Dialog("Error", None, gtk.DIALOG_MODAL, (gtk.STOCK_OK, gtk.RESPONSE_OK))
+		diag.vbox.pack_start(gtk.Label(txt), True, True, 0)
+		diag.show_all()
+		diag.run()
+		diag.destroy()
+
+	def showMessageDialog(self, txt):
+		diag = gtk.Dialog("Information", None, gtk.DIALOG_MODAL, (gtk.STOCK_OK, gtk.RESPONSE_OK))
+		diag.vbox.pack_start(gtk.Label(txt), True, True, 0)
+		diag.show_all()
+		diag.run()
+		diag.destroy()
 			
 	# For communication between widgets!
 	def getNotebook(self):

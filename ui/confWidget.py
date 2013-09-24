@@ -5,6 +5,7 @@ Created on Aug 10, 2012
 '''
 from core.fwCore import core
 from core.utils.project_manager import project_manager
+from core.utils.project_manager import AUTH_BASIC
 from core.exceptions import antaresException
 from ui.IWidget import IWidget
 from bs4 import BeautifulSoup
@@ -31,6 +32,8 @@ class cfgWidget(IWidget):
         self.project_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
         self.server_frame = gtk.Frame("Server")
         self.server_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
+        self.auth_frame = gtk.Frame("Authentication")
+        self.auth_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
         self.service_frame = gtk.Frame("Default service")
         self.service_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
         self.port_frame = gtk.Frame("Default port")
@@ -75,8 +78,6 @@ class cfgWidget(IWidget):
         column = 0
         row = 0
         for text in sorted(self.conf_dict.iterkeys()):
-            if text == 'user' or text == 'password':
-                continue
             table.attach(self.conf_dict[text][0], column, column+1, row, row+1)
             column += 1
             table.attach(self.conf_dict[text][1], column, column+1, row, row+1)
@@ -97,6 +98,28 @@ class cfgWidget(IWidget):
             row += 1
             
         self.server_frame.add(table)
+        
+        # Authentication frame
+        table = gtk.Table(4, 2, True)
+        table.attach(gtk.Label('Type'), 0, 1, 0, 1)
+        if project_manager.getAuthType() == AUTH_BASIC:
+            entry = gtk.Entry(0)
+            entry.set_text('Basic')
+            table.attach(entry, 1, 2, 0, 1)
+        table.attach(gtk.Label('Domain'), 0, 1, 1, 2)
+        entry = gtk.Entry(0)
+        entry.set_text(project_manager.getDomain())
+        table.attach(entry, 1, 2, 1, 2)
+        table.attach(gtk.Label('Username'), 0, 1, 2, 3)
+        entry = gtk.Entry(0)
+        entry.set_text(project_manager.getUsername())
+        table.attach(entry, 1, 2, 2, 3)
+        table.attach(gtk.Label('Password'), 0, 1, 3, 4)
+        entry = gtk.Entry(0)
+        entry.set_text(project_manager.getPassword())
+        table.attach(entry, 1, 2, 3, 4)
+        
+        self.auth_frame.add(table)
         
         # Default webService service and port combobox
         wsdl = core.iswsdlhelper()
@@ -121,6 +144,7 @@ class cfgWidget(IWidget):
         self.vbox = gtk.VBox(False, 0)
         self.vbox.pack_start(self.project_frame, True, True, 0)
         self.vbox.pack_start(self.server_frame, True, True, 0)
+        self.vbox.pack_start(self.auth_frame, True, True, 0)
         self.vbox.pack_start(self.service_frame, True, True, 0)
         self.vbox.pack_start(self.port_frame, True, True, 0)
         self.vbox.show_all()

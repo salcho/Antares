@@ -1,4 +1,4 @@
-#!/usr/bin/env python -W ignore::DeprecationWarning
+#!/usr/bin/env python
 
 '''
 @author = Santiago Diaz - salchoman@gmail.com
@@ -12,7 +12,8 @@ from core.fwCore import core
 import os
 import sys
 import warnings
-import argparse
+import optparse
+import socket
 
 warnings.filterwarnings(action="ignore", category=DeprecationWarning)
 
@@ -27,6 +28,14 @@ def main():
 	try:
 		paths['main_path'] = mainPath()
 		logger.debug("Main path is: %s" % paths['main_path'])
+		parser = optparse.OptionParser('usage %prog -t <seconds>')
+		parser.add_option('-t', dest='tout', type='int', default='60', help='specify HTTP timeout in seconds')
+		(opts, args) = parser.parse_args()
+		if opts.tout:
+			socket.setdefaulttimeout(opts.tout)
+		else:
+			socket.setdefaulttimeout(60)
+		logger.info("Setting default timeout to %d seconds" % socket.getdefaulttimeout())
 		checkDependencies()
 		core.startUI()
 	except antaresDependenciesException:

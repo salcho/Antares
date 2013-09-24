@@ -8,12 +8,20 @@ from core.data import wsdl_name
 from core.data import settings_name
 from core.data import logger
 from core.data import paths
-from collections import defaultdict
+from urllib2 import HTTPError
+from urllib2 import URLError
 import os
 import exceptions
 import urllib2
 import shutil
+import base64
 import cPickle as pickle
+
+AUTH_BASIC = 0
+AUTH_DIGEST = 1
+AUTH_FORMS = 2
+AUTH_WINDOWS = 3
+AUTH_WSSE = 4
 
 class projMan:
 	
@@ -23,19 +31,30 @@ class projMan:
 	
 		#currSettings is a dictionary with keys [control,server] which values are as presented in the config widget
 		self.currSettings = {}
-		self.currSettings['control'] = {'name': None, 'url': None, 'user': None, 'password': None}
+		self.currSettings['control'] = {'name': None, 'url': None}
 		self.currSettings['server'] = {}
+		self.currSettings['auth'] = {'type': None, 'domain': None, 'user': None, 'password': None}
 		#automatic wsdl save flag
 		self.save_flag = False
 		logger.debug("Project manager instansiated")
 	
-	def createProject(self, name, url):
+	def createProject(self, name, url, auth_dict=None):
+		"""
+		This function receives the auth_dict parameter which contains optional HTTP authentication
+		credentials. Such dictionary should follow the same structure as self.currSettings['auth'].
+		"""
 		try:
 			msg = ''
+			if auth_dict:
+				if auth_dict and auth_dict['type'] == AUTH_BASIC:
+					request = self.createAuthorizationRequest(auth_dict['user'], auth_dict['password'], url, domain=auth_dict['domain'])
+					wsdl = urllib2.urlopen(request)
+					self.currSettings['auth'] = auth_dict
+			else:
+				wsdl = urllib2.urlopen(url)
 			self.proj_name = name
 			self.proj_url = url
 			os.chdir(paths['main_path'] + os.path.sep + paths['projects_dir'])
-			wsdl = urllib2.urlopen(url)
 			os.mkdir(name)
 			os.chdir(name)
 			wsdl_file = open(wsdl_name, 'w')
@@ -47,6 +66,8 @@ class projMan:
 			self.currSettings['control']['url'] = url
 			sett_file.write(pickle.dumps(self.currSettings))
 			sett_file.close()
+		except HTTPError as e:
+			msg = 'ERROR: Got %s trying to download WSDL\nDid you provided the correct creds?' % str(e)
 		except os.error as e:   
 			msg =  'Error creating project: %s' % e.strerror
 		except exceptions.IOError as e:
@@ -54,7 +75,7 @@ class projMan:
 		except Exception as e:
 			msg = 'createProject, unknown exception: %s ' % e.strerror
 		else:
-			msg =  'Project created'
+			msg =  'Project %s created' % self.proj_name
 			logger.info("Project %s created" % self.proj_name)
 		finally:
 			os.chdir(paths['main_path'])
@@ -88,7 +109,7 @@ class projMan:
 					wsdl = urllib2.urlopen(self.getURL())
 					fh.write(wsdl.read())
 					fh.close()
-			
+			print self.currSettings['server']
 		except Exception as e:
 			msg = 'Error: ' + e
 		else:
@@ -125,7 +146,42 @@ class projMan:
 		try:
 			shutil.rmtree(paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + name)
 		except Exception as e:
-			print 'deleteProject @ pm: ' + str(e)
+			logger.error('deleteProject @ pm: ' + str(e))
+			
+	def detectProtocolAuth(self, url):
+		"""
+		This function will try to connect first to the server to check if any HTTP authentication
+		method is enabled (e.g. Basic auth). 
+		
+		Return parameter tells the UI which authentication method was discovered in order for it
+		to show the correct dialog 
+		"""
+		try:
+			wsdl = urllib2.urlopen(url)
+		except HTTPError as e:
+			return e.code
+		except URLError as e:
+			# Known reasons are: connection refused, no route to host
+			try:
+				return e.reason[1]
+			except:
+				# Timeout
+				return e.reason
+		else:
+			return None
+		
+	def createAuthorizationRequest(self, user, pwd, url, domain=None):
+		"""
+		Create the header needed to perform basic authentication. All by ourselves 8]
+		"""
+		req = urllib2.Request(url)
+		if domain:
+			b64 = base64.encodestring('%s\%s:%s' % (domain, user, pwd)).replace('\n', '')
+		else:
+			b64 = base64.encodestring('%s:%s' % (user, pwd)).replace('\n', '')
+		logger.debug('Authorization header is now %s for creds %s\%s:%s' % (b64, domain, user, pwd))
+		req.add_header('Authorization', 'Basic %s' % b64)
+		return req
 	
 	def getCurrentSettings(self):
 		return self.currSettings['control']
@@ -142,5 +198,20 @@ class projMan:
 	def getWSDLContents(self):
 		fh = open(self.getWSDLPath(), 'r')
 		return fh.read()
+	
+	def getName(self):
+		return self.currSettings['control']['name']
+	
+	def getAuthType(self):
+		return self.currSettings['auth']['type']
+	
+	def getUsername(self):
+		return self.currSettings['auth']['user']
+	
+	def getPassword(self):
+		return self.currSettings['auth']['password']
+	
+	def getDomain(self):
+		return self.currSettings['auth']['domain']
 		
 project_manager = projMan()		

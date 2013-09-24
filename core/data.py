@@ -3,7 +3,7 @@
 from core.log import LOGGER
 import time
 
-# misc variables
+# Misc variables
 paths = {}
 paths['main_path'] = None
 paths['plugins_dir'] = '/core/plugins/'
@@ -14,10 +14,8 @@ plugins_dir = '/core/plugins/'
 projects_dir = 'projects/'
 log_dir = '/log/'
 log_file = time.strftime("%d-%b-%Y_%H:%M:%S") + ".log"
-
 wsdl_name = 'target.wsdl'
 settings_name = 'settings.p'
-
 logger = LOGGER
 
 # WSDL datatypes: http://www.w3.org/TR/xmlschema-2/#built-in-datatypes
