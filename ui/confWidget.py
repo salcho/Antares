@@ -6,6 +6,8 @@ Created on Aug 10, 2012
 from core.fwCore import core
 from core.utils.project_manager import project_manager
 from core.utils.project_manager import AUTH_BASIC
+from core.utils.project_manager import AUTH_WINDOWS
+from core.utils.project_manager import AUTH_UNKNOWN
 from core.exceptions import antaresException
 from ui.IWidget import IWidget
 from bs4 import BeautifulSoup
@@ -102,21 +104,25 @@ class cfgWidget(IWidget):
         # Authentication frame
         table = gtk.Table(4, 2, True)
         table.attach(gtk.Label('Type'), 0, 1, 0, 1)
+        entry = gtk.Entry(0)
         if project_manager.getAuthType() == AUTH_BASIC:
-            entry = gtk.Entry(0)
-            entry.set_text('Basic')
-            table.attach(entry, 1, 2, 0, 1)
+            entry.set_text('Basic authentication')
+        elif project_manager.getAuthType() == AUTH_WINDOWS:
+            entry.set_text('Negotiate/Windows authentication')
+        elif project_manager.getAuthType() == AUTH_UNKNOWN:
+            entry.set_text('Unknown protocol authentication')
+        table.attach(entry, 1, 2, 0, 1)
         table.attach(gtk.Label('Domain'), 0, 1, 1, 2)
         entry = gtk.Entry(0)
-        entry.set_text(project_manager.getDomain())
+        entry.set_text(str(project_manager.getDomain()))
         table.attach(entry, 1, 2, 1, 2)
         table.attach(gtk.Label('Username'), 0, 1, 2, 3)
         entry = gtk.Entry(0)
-        entry.set_text(project_manager.getUsername())
+        entry.set_text(str(project_manager.getUsername()))
         table.attach(entry, 1, 2, 2, 3)
         table.attach(gtk.Label('Password'), 0, 1, 3, 4)
         entry = gtk.Entry(0)
-        entry.set_text(project_manager.getPassword())
+        entry.set_text(str(project_manager.getPassword()))
         table.attach(entry, 1, 2, 3, 4)
         
         self.auth_frame.add(table)

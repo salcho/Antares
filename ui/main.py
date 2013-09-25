@@ -9,6 +9,8 @@ import gtk
 import cPickle 
 from core.utils.project_manager import project_manager
 from core.utils.project_manager import AUTH_BASIC
+from core.utils.project_manager import AUTH_WINDOWS
+from core.utils.project_manager import AUTH_UNKNOWN
 from core.exceptions import antaresException
 
 class mainUI(object):
@@ -115,11 +117,28 @@ class CustomWindow():
 					self.showErrorDialog('Correct URLs must begin with HTTP or HTTPS protocols.')
 					dialog.destroy()
 					return 
+				
+				# Test for authentication methods on the application layer
 				ret = project_manager.detectProtocolAuth(url.get_text())
 				if ret:
 					# Basic auth!
-					if ret == 401:
-						auth_dict = self.showBasicAuthDialog()
+					if ret == AUTH_BASIC:
+						auth_dict = self.showAuthDialog(AUTH_BASIC)
+					# NTLM auth
+					elif ret == AUTH_WINDOWS:
+						# Is python_ntlm installed?
+						try:
+							import ntlm
+						except ImportError:
+							self.showErrorDialog("NTLM authentication detected!\nSorry, the python_ntlm library wasn't found. This operation isn't supported.")
+							dialog.destroy()
+							return
+						auth_dict = self.showAuthDialog(AUTH_WINDOWS)
+					# What could this be?
+					elif ret == AUTH_UNKNOWN:
+						self.showErrorDialog("This server uses a unsupported/unknown authentication method. Check debug messages for more details.")
+						dialog.destroy()
+						return
 					# Something wrong happened
 					else:
 						if 'timed out' in ret:
@@ -169,7 +188,7 @@ class CustomWindow():
 			chkbtn.set_active(False)
 			savewsdl_btn = gtk.CheckButton("Save WSDL automatically?")
 			savewsdl_btn.connect("toggled", self.saveWSDL)
-			savewsdl_btn.set_active(True)
+			savewsdl_btn.set_active(False)
 			
 			frame.add(vbox)
 			dialog.vbox.pack_start(frame, True, True, 0)
@@ -258,13 +277,16 @@ class CustomWindow():
 		else:
 			dialog.destroy()
 			
-	def showBasicAuthDialog(self):
+	def showAuthDialog(self, type):
 		realm = gtk.Entry(0)
 		username = gtk.Entry(0)
 		password = gtk.Entry(0)
 		dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_OK, gtk.RESPONSE_OK))
-		dialog.vbox.pack_start(gtk.Label("Basic authentication required to download WSDL object.\nPlease enter credentials below.\n"), True, True, 0)
-		dialog.vbox.pack_start(gtk.Label("Realm (optional)"), True, True, 0)		   
+		if type == AUTH_BASIC:
+			dialog.vbox.pack_start(gtk.Label("Basic authentication required to download WSDL object.\nPlease enter credentials below.\n"), True, True, 0)
+		elif type == AUTH_WINDOWS:
+			dialog.vbox.pack_start(gtk.Label("Windows authentication required to download WSDL object.\nPlease enter credentials below.\n"), True, True, 0)
+		dialog.vbox.pack_start(gtk.Label("Realm/Domain <default:IP>"), True, True, 0)		   
 		dialog.vbox.pack_start(realm, True, True, 0)
 		dialog.vbox.pack_start(gtk.Label("Username"), True, True, 0)
 		dialog.vbox.pack_start(username, True, True, 0)
@@ -273,9 +295,11 @@ class CustomWindow():
 		dialog.show_all()
 		rsp = dialog.run()
 		if rsp == gtk.RESPONSE_OK:
+			if not realm.get_text() and (type == AUTH_BASIC or type == AUTH_WINDOWS):
+				realm.set_text(project_manager.getIP())
 			if username.get_text() and password.get_text():
 				# Tell given credentials using the self.currSettings['auth'] structure in project_manager
-				auth_dict = {'type': AUTH_BASIC, 
+				auth_dict = {'type': type, 
 							'domain': realm.get_text(), 
 							'user': username.get_text(), 
 							'password': password.get_text()}

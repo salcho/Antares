@@ -119,8 +119,8 @@ class TestRequestWidget(IWidget):
 			if self.opName != entry.get_text():
 				self.opName = entry.get_text()
 				self.inProcess.set_from_stock(gtk.STOCK_MEDIA_PLAY, gtk.ICON_SIZE_BUTTON)
-				while gtk.events_pending():
-					gtk.main_iteration(False)
+				#while gtk.events_pending():
+				#	gtk.main_iteration(False)
 				self.inProcess.show()
 				if core.iswsdlhelper():
 					wsdl = core.iswsdlhelper()

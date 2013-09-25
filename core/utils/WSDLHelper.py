@@ -4,11 +4,13 @@ Created on Jan 20, 2013
 @author: Santiago Diaz - salchoman@gmail.com
 '''
 
-from core.utils.project_manager import project_manager
-from core.utils.project_manager import AUTH_BASIC
 from core.data import logger
 from core.exceptions import antaresUnknownException
-
+from core.exceptions import antaresWrongCredentialsException
+from core.utils.project_manager import project_manager
+from core.utils.project_manager import AUTH_BASIC
+from core.utils.project_manager import AUTH_WINDOWS
+from core.utils.project_manager import AUTH_UNKNOWN
 from core.data import DEFAULT_ANYURI_VALUE
 from core.data import DEFAULT_BASE64BINARY_VALUE
 from core.data import DEFAULT_BOOLEAN_VALUE
@@ -32,6 +34,7 @@ from core.data import DEFAULT_LONG_VALUE
 
 from suds.client import Client
 from suds.client import TransportError
+from suds.transport.https import HttpAuthenticated
 from suds.sax.text import Raw
 from suds import WebFault
 from suds import null
@@ -74,28 +77,72 @@ class WSDLHelper(object):
 
 	def loadWSDL(self, url):
 		"""
-		Will load a WSDL and create a ServiceDefinition of it:
+		This function should be called right after the project_manager has loaded any projects,
+		it will query the PM in order to perform authentication tasks before loading the WSDL and
+		URL objects used to represent the EndPoint.
+
+		Error handling is a quite a mess here.
+		Default HTTP timeout is set from command line or default (100 seconds) if not specified. 
+		The url parameter may point to the offline WSDL copy in the filesystem while pm.getURL() will give EndPoint's addr.
+		A WSDL file can be loaded from it's offline copy while the document contains _a_ valid EndPoint's IP addr. 
 
 		ServiceDefinition @ client.sd
 	        ports = (port, [methods])
         	ports = (port, [(name, [args])])
 	        ports = (port, [name, [(type, name)]])
-	        
-	    Default HTTP timeout is set from command line or 100 seconds if not specified
 		"""
 		try:
 			msg = ''
-			# Does this project uses basic authentication?
+			
+			# Check for protocol authentication methods
 			if project_manager.getAuthType() == AUTH_BASIC:
 				if project_manager.getUsername() and project_manager.getPassword():
-						# Create ws_client and server_client using saved credentials
-						self.ws_client = Client(url, username=project_manager.getUsername(), password=project_manager.getPassword())
+					try:
+						self.ws_client = Client(url, username=project_manager.getUsername(), password=project_manager.getPassword(), 
+											faults=True, prettyxml=True, cache=None)
 						request = project_manager.createAuthorizationRequest(project_manager.getUsername(), 
-																project_manager.getPassword(), 
-																url,
-																project_manager.getDomain())
+																	project_manager.getPassword(), 
+																	project_manager.getURL(),
+																	project_manager.getDomain())
 						self.server_client = urllib2.urlopen(request)
+					except URLError as e:
+						try:
+							if e.code == 401:
+								msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
+								logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+																									project_manager.getPassword(), 
+																									project_manager.getName()))
+								return msg
+						except:
+							msg = "\tWarning:\nWasn't able to connect to target.\nAntares is running in offline mode now."
+			elif project_manager.getAuthType() == AUTH_WINDOWS:
+				# Can we do this?
+				try:
+					import ntlm
+					if project_manager.getUsername() and project_manager.getPassword():
+						ntlm_transport = HttpAuthenticated(username='%s\\%s' % (project_manager.getDomain(), project_manager.getUsername()), 
+														password=project_manager.getPassword())
+						self.ws_client = Client(url, transport=ntlm_transport, faults=True, prettyxml=True, cache=None)
+						self.server_client = project_manager.createNTLMRequest(project_manager.getUsername(), project_manager.getPassword(), 
+																		project_manager.getURL(), project_manager.getDomain())
+				except ImportError:
+					msg = "Error: The project you're trying to load uses Windows authentication\n"
+					msg += "but we couldn't load the proxy_ntlm third party package.\n"
+					msg += "Please install it before proceeding. "
+					return msg
+				
+				except (antaresWrongCredentialsException, TransportError) as e:
+					msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
+					logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+																						project_manager.getPassword(), 
+																						project_manager.getName()))
+					return msg
+
 			else:
+				if project_manager.getAuthType() == AUTH_UNKNOWN:
+					msg = "Warning: Antares detected an unknown protocol mechanism for this EndPoint!\n"
+					msg = "We probably won't be able to connect to the service."
+				
 				# Or fallback to regular connections
 				self.ws_client = Client(url, faults=True, prettyxml=True, cache=None)
 				self.server_client = urllib2.urlopen(project_manager.getURL())
@@ -104,20 +151,11 @@ class WSDLHelper(object):
 			
 			if self.ws_client:
 				msg = 'OK'
-				logger.info("WSDL helper is: %s" % self.ws_client)
+				logger.info("WSDL helper is:\n %s" % self.ws_client)
 			if url.startswith('file'):
 				logger.info("Loaded wsdl from local path %s" % project_manager.getWSDLPath())
 			else:
 				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
-		except URLError as e:
-			try:
-				if e.code == 401:
-					msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
-					logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
-																						project_manager.getPassword(), 
-																						project_manager.getName()))
-			except:
-				msg = "\tWarning:\nWasn't able to connect to target.\nAntares is running in offline mode now."
 		except exceptions.ValueError:
 			msg = "Error: Malformed URL\n" + url
 		except os.error:
@@ -127,6 +165,11 @@ class WSDLHelper(object):
 		except TypeNotFound as e:
 			msg = "Error: There is an import problem with this WSDL.\n We hope to add automatic fix for this in the future."
 			msg += "\nReference is: https://fedorahosted.org/suds/wiki/TipsAndTricks#Schema-TypeNotFound"
+		except TransportError as e:
+			msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
+			logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+																						project_manager.getPassword(), 
+																						project_manager.getName()))
 		except Exception as e:
 			msg = 'FATAL: unmanaged exception. Check stderr : ' + e.message
 			print e.__dict__
@@ -212,7 +255,7 @@ class WSDLHelper(object):
 	def getRqRx(self, opName):
 		"""
 		Craft and send a test request to the specified operation
-		Return request template + response
+		Return: request template + response
 		"""
 		ret = (None, None)
 		try:
@@ -227,12 +270,8 @@ class WSDLHelper(object):
 			logger.error("Got TransportError sending request: %s" % te.message)
 		# suds client class may just raise a regular Exception to tell us of HTTP code 401	
 		except Exception as e:
-			error = self.processException(e)
-			if error == 401:
-				txt = 'Got a 401 Unauthorized HTTP packet. \nThat means this EndPoint requires HTTP authentication.\n\n'
-				txt += "Such method is known for being vulnerable to bruteforcing. \n"
-				txt += "Fortunately, you can specify these credentials in the configuration tab."
-				ret = (txt, None)
+			txt = self.processException(e)
+			ret = (txt, self.ws_client.messages['rx'])
 		return ret 
 	
 	def processException(self, except_obj):
@@ -243,14 +282,23 @@ class WSDLHelper(object):
 		"""
 		try:
 			msg = except_obj.message
-			print except_obj.strerror
+			txt = ''
 			# HTTP Authentication here
 			if u'Unauthorized' in msg[1]:
-				# Tell everyone 
+				# We should probably tell to proj_man here 
 				logger.error("Got HTTP code 401, please specify HTTP credentials in the config tab!")
-				return 401
+				txt = 'Got a 401 Unauthorized HTTP packet. \nThat means this EndPoint requires protocol authentication.\n\n'
+				txt += "Fortunately, you can specify these credentials in the configuration tab."
+			elif msg[0] == 404:
+				logger.error("Got HTTP code 404, Not Found! Removed??")
+				txt = "Got a 404 Not Found HTTP packet. \nThe EndPoint might have changed it's location.\n\nCheck URL!"
+			else:
+				print except_obj.__dict__
+				print type(except_obj)
+				logger.error("Unknown exception at processException. Data is: %s" % except_obj.__dict__)
+			return txt
 		except:
-			logger.error("Unknown exception at processException. Data is: %s" % except_obj.__dict__)
+			pass
 		
 	# ------------------
 	# Getters and setters

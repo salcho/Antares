@@ -5,6 +5,7 @@ from core.exceptions import antaresDependenciesException
 
 def checkDependencies():
 	failed_deps = 0
+	
 	try:
 		import suds
 		logger.info("Success loading: [('suds', %s)]" % suds.__version__)
@@ -41,6 +42,14 @@ def checkDependencies():
 		msg += "which will generates nice charts for us. "
 		logger.critical(msg)
 		failed_deps += 1
+		
+	try:
+		import ntlm
+		logger.info("Success loading [('python_ntlm')])")
+	except ImportError:
+		msg = "Antares couldn't find python_ntlm package installed."
+		msg += "\nAlthough this package isn't strictly necessary we won't perform NTLM authentication without it."
+		logger.warning(msg)
 		
 	if failed_deps:
 		raise antaresDependenciesException("%d dependencies aren't met" % failed_deps)

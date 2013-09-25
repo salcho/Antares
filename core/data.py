@@ -42,8 +42,9 @@ DEFAULT_UNKNOWN_VALUE = 'UNKNOWN'
 DEFAULT_INTEGER_VALUE = 1
 DEFAULT_LONG_VALUE = 1
 
-# Regular expressions to match error messages
+# Regular expressions to match various stuff
 ERROR_GENERIC_REGEXP = (
                           r'<.*faultstring>(.*%s.*)</faultstring.*',
                           r'^[<.*>]*?(.*%s.*)[<.*>]*$'
                           )
+EXTRACT_IP_REGEX = r'[0-9]+(?:\.[0-9]+){3}'
