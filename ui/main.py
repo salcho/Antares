@@ -120,6 +120,7 @@ class CustomWindow():
 				
 				# Test for authentication methods on the application layer
 				ret = project_manager.detectProtocolAuth(url.get_text())
+				auth_dict = None
 				if ret:
 					# Basic auth!
 					if ret == AUTH_BASIC:

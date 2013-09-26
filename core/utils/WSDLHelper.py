@@ -109,7 +109,7 @@ class WSDLHelper(object):
 						try:
 							if e.code == 401:
 								msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
-								logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+								logger.error('Credentials %s:%s [Basic] for project %s stopped working' % (project_manager.getUsername(), 
 																									project_manager.getPassword(), 
 																									project_manager.getName()))
 								return msg
@@ -133,7 +133,7 @@ class WSDLHelper(object):
 				
 				except (antaresWrongCredentialsException, TransportError) as e:
 					msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
-					logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+					logger.error('Credentials %s:%s [NTLM] for project %s stopped working' % (project_manager.getUsername(), 
 																						project_manager.getPassword(), 
 																						project_manager.getName()))
 					return msg

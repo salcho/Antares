@@ -22,6 +22,7 @@ import cPickle as pickle
 from core.exceptions import antaresDependenciesException,\
 	antaresUnknownException
 
+AUTH_NONE = 0
 AUTH_BASIC = 1
 AUTH_DIGEST = 2
 AUTH_UNKNOWN = 3
@@ -61,9 +62,13 @@ class projMan:
 					self.currSettings['auth'] = auth_dict
 			else:
 				wsdl = urllib2.urlopen(url)
+				self.currSettings['auth'] = {'type': None, 'domain': None, 'user': None, 'password': None}
 			self.proj_name = name
 			self.proj_url = url
-			os.chdir(paths['main_path'] + os.path.sep + paths['projects_dir'])
+			main = paths['main_path'] + os.path.sep + paths['projects_dir']
+			if not os.path.exists(main):
+				os.makedirs(main)
+			os.chdir(main)
 			if os.path.exists(os.path.curdir + os.path.sep + name):
 				raise os.error
 			os.mkdir(name)
@@ -78,6 +83,7 @@ class projMan:
 			sett_file.write(pickle.dumps(self.currSettings))
 			sett_file.close()
 		except HTTPError as e:
+			
 			msg = 'ERROR: Got %s trying to download WSDL\nDid you provided the correct credentials?' % str(e)
 			fail = True
 		except antaresWrongCredentialsException as e:
