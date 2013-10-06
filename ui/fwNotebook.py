@@ -10,6 +10,7 @@ from ui.TestRequestWidget import TestRequestWidget
 from ui.injWidget import injWidget
 from ui.xsdWidget import xsdWidget
 from ui.analyzeWidget import analyzeWidget
+from ui.dosWidget import dosWidget
 from ui.loggerWidget import loggerWidget
 
 CONFIG_TAB = 0
@@ -52,6 +53,11 @@ class mainNotebook(gtk.Notebook):
         injwgt.start()
         self.tabs.append(injwgt)
         self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injector'))
+        #DoS wdgt
+        doswgt = dosWidget()
+        doswgt.start()
+        self.tabs.append(doswgt)
+        self.notebook.append_page(doswgt.getWidget(), gtk.Label('DoS'))
         #Analyze wdgt
         anawgt = analyzeWidget()
         anawgt.start()
@@ -61,7 +67,7 @@ class mainNotebook(gtk.Notebook):
         #logwgt = loggerWidget()
         #logwgt.start()
         #self.notebook.append_page(logwgt.getWidget(), gtk.Label('Log'))
-        
+        self.notebook.set_current_page(0)
     def getNotebook(self):
         return self.notebook
     
@@ -70,6 +76,13 @@ class mainNotebook(gtk.Notebook):
     
     def addPage(self, txt):
         self.notebook.append_page(DummyWidget(), txt)
+        
+    def getConfig(self):
+        """
+        This function will permit other objects to get the actual configuration that's
+        being shown by the UI
+        """
+        pass
         
 class DummyWidget():
     '''

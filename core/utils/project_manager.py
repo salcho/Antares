@@ -24,10 +24,9 @@ from core.exceptions import antaresDependenciesException,\
 
 AUTH_NONE = 0
 AUTH_BASIC = 1
-AUTH_DIGEST = 2
-AUTH_UNKNOWN = 3
-AUTH_WINDOWS = 4
-AUTH_WSSE = 5
+AUTH_UNKNOWN = 2
+AUTH_WINDOWS = 3
+AUTH_WSSE = 4
 
 class projMan:
 	
@@ -110,7 +109,6 @@ class projMan:
 		"""
 		Load currSettings with the new pickle load, this function MUST be called before updating core, notebook, etc
 		save_wsdl flag to save the last downloaded WSDL automatically into project
-		from_file flag to actually read the WSDL from the offline copy
 		"""
 
 		try:
@@ -118,30 +116,24 @@ class projMan:
 			os.chdir(paths['main_path'] + os.path.sep + paths['projects_dir'] + os.path.sep + name)
 			# Load pickle file
 			self.currSettings = pickle.load(open(settings_name, 'rb'))
-			
 			# Load control structures
 			self.currSettings['control']['name'] = name
 			self.proj_name = name
 			
-			# Load WSDL in memory
-			if from_file:
-				fh = open(wsdl_name, 'r')
+			# This path happens when the WSDL is being read online while refreshing your offline copy
+			if from_file and save_wsdl:
+				fh = open(wsdl_name, 'w')
+				if self.getAuthType() == AUTH_BASIC:
+					request = self.createAuthorizationRequest(self.getUsername(), self.getPassword(), self.getURL(), domain=self.getDomain())
+					wsdl = urllib2.urlopen(request)
+				elif self.getAuthType() == AUTH_WINDOWS:
+					request = self.createNTLMRequest(self.getUsername(), self.getPassword(), self.getURL(), self.getDomain())
+					wsdl = urllib2.urlopen(request)
+				else:
+					wsdl = urllib2.urlopen(self.getURL())
+				wsdl = wsdl.read()
+				logger.info("Writing %d bytes to offline WSDL" % len(wsdl))
 				fh.close()
-			else:
-				# This path happens when the WSDL is being read online while refreshing your offline copy
-				if save_wsdl:
-					fh = open(wsdl_name, 'w')
-					if self.getAuthType() == AUTH_BASIC:
-						request = self.createAuthorizationRequest(self.getUsername(), self.getPassword(), self.getURL(), domain=self.getDomain())
-						wsdl = urllib2.urlopen(request)
-					elif self.getAuthType() == AUTH_WINDOWS:
-						wsdl = self.createNTLMRequest(self.getUsername(), self.getPassword(), self.getURL(), self.getDomain())
-					else:
-						wsdl = urllib2.urlopen(self.getURL())
-					wsdl = wsdl.read()
-					logger.info("Writing %d bytes to offline WSDL" % len(wsdl))
-					fh.write(wsdl)
-					fh.close()
 					
 		except Exception as e:
 			msg = 'Error: ' + e
@@ -151,20 +143,17 @@ class projMan:
 			os.chdir(paths['main_path'])
 			return msg
 	
-	def saveProject(self, d):
+	def saveProject(self, headers):
 		"""
 		Dump pickle according to currSettings dict
 		"""
 		try:
-			for key in d.keys():
-				self.currSettings['server'][key] = d[key]
+			for key in headers.keys():
+				self.currSettings['server'][key] = headers[key]
 			fh = open(self.getSettingsPath(), 'w')
+			print self.currSettings
 			fh.write(pickle.dumps(self.currSettings))
 			fh.close()
-			if self.save_flag:
-				fh = open(self.getWSDLPath(), 'w')
-				wsdl = urllib2.urlopen(url)
-				pass
 		except:
 			return False
 		return True
@@ -284,17 +273,33 @@ class projMan:
 	def getName(self):
 		return self.currSettings['control']['name']
 	
+	"""
+	The following setter functions have been written mainly for interaction
+	with the UI.
+	"""
 	def getAuthType(self):
 		return self.currSettings['auth']['type']
+	def setAuthType(self, entry, type):
+		if entry.get_text():
+			self.currSettings['auth']['type'] = type
 	
 	def getUsername(self):
 		return self.currSettings['auth']['user']
+	def setUsername(self, entry):
+		if entry.get_text():
+			self.currSettings['auth']['user'] = entry.get_text()
 	
 	def getPassword(self):
 		return self.currSettings['auth']['password']
+	def setPassword(self, entry):
+		if entry.get_text():
+			self.currSettings['auth']['password'] = entry.get_text()
 	
 	def getDomain(self):
 		return self.currSettings['auth']['domain']
+	def setDomain(self, entry):
+		if entry.get_text():
+			self.currSettings['auth']['domain'] = entry.get_text()
 	
 	def getIP(self):
 		return re.findall(EXTRACT_IP_REGEX, self.currSettings['control']['url'])[0]

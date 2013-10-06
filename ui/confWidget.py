@@ -8,6 +8,8 @@ from core.utils.project_manager import project_manager
 from core.utils.project_manager import AUTH_BASIC
 from core.utils.project_manager import AUTH_WINDOWS
 from core.utils.project_manager import AUTH_UNKNOWN
+from core.utils.project_manager import AUTH_WSSE
+from core.utils.project_manager import AUTH_NONE
 from core.exceptions import antaresException
 from ui.IWidget import IWidget
 from bs4 import BeautifulSoup
@@ -29,6 +31,7 @@ class cfgWidget(IWidget):
         self.server_dict = {}
         self.service_combobox = None
         self.port_combobox = None
+        self.auth_combobox = None
         
         self.project_frame = gtk.Frame("Project")
         self.project_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
@@ -104,25 +107,35 @@ class cfgWidget(IWidget):
         # Authentication frame
         table = gtk.Table(4, 2, True)
         table.attach(gtk.Label('Type'), 0, 1, 0, 1)
-        entry = gtk.Entry(0)
-        if project_manager.getAuthType() == AUTH_BASIC:
-            entry.set_text('Basic authentication')
-        elif project_manager.getAuthType() == AUTH_WINDOWS:
-            entry.set_text('Negotiate/Windows authentication')
-        elif project_manager.getAuthType() == AUTH_UNKNOWN:
-            entry.set_text('Unknown protocol authentication')
-        table.attach(entry, 1, 2, 0, 1)
+        self.auth_combobox = gtk.combo_box_entry_new_text()
+        labels = {AUTH_NONE: 'None', 
+                  AUTH_BASIC: 'Basic authentication', AUTH_WINDOWS: 'Negotiate/Windows authentication', 
+                  AUTH_WSSE: 'WSSE', AUTH_UNKNOWN: 'Unknown protocol authentication'}
+        for label in labels.values():
+            self.auth_combobox.append_text(label)
+
+        if not project_manager.getAuthType():
+            self.auth_combobox.set_active(0)
+        else:
+            self.auth_combobox.set_active(project_manager.getAuthType())
+        #Call the appropriate PM function with the correct constant for this type of authentication
+        self.auth_combobox.child.connect('changed', project_manager.setAuthType, self.auth_combobox.get_active())
+
+        table.attach(self.auth_combobox, 1, 2, 0, 1)
         table.attach(gtk.Label('Domain'), 0, 1, 1, 2)
         entry = gtk.Entry(0)
         entry.set_text(str(project_manager.getDomain()))
+        entry.connect('focus-out-event', project_manager.setDomain, entry.get_text())
         table.attach(entry, 1, 2, 1, 2)
         table.attach(gtk.Label('Username'), 0, 1, 2, 3)
         entry = gtk.Entry(0)
         entry.set_text(str(project_manager.getUsername()))
+        entry.connect('focus-out-event', project_manager.setUsername, entry.get_text())
         table.attach(entry, 1, 2, 2, 3)
         table.attach(gtk.Label('Password'), 0, 1, 3, 4)
         entry = gtk.Entry(0)
         entry.set_text(str(project_manager.getPassword()))
+        entry.connect('focus-out-event', self.changeAuth, project_manager.setPassword, entry.get_text())
         table.attach(entry, 1, 2, 3, 4)
         
         self.auth_frame.add(table)
@@ -155,8 +168,13 @@ class cfgWidget(IWidget):
         self.vbox.pack_start(self.port_frame, True, True, 0)
         self.vbox.show_all()
         
+        self.sw = gtk.ScrolledWindow()
+        self.sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.sw.add_with_viewport(self.vbox)
+        self.sw.show_all()
+        
     def getWidget(self):
-        return self.vbox
+        return self.sw
     
     def viewWSDL(self, widget, action):
         popup = gtk.Window()
@@ -192,46 +210,14 @@ class cfgWidget(IWidget):
         core.iswsdlhelper().setPort(entry.get_text())
     def changeService(self, entry):
         core.iswsdlhelper().setService(entry.get_text())
+    def changeAuth(self, w, event, entry, id):
+            if 1 is id:
+                project_manager.setDomain(entry.get_text())
+            elif 2 is id:
+                project_manager.setUsername(entry.get_text())
+            elif 3 is id:
+                project_manager.setPassword(entry.get_text())
+            elif 4 is id:
+                project_manager.setAuthType(entry)
+            print project_manager.currSettings['auth']
     
-        """
-        #Authentication frame
-        self.fAuth = gtk.Frame("Authentication")
-        table = gtk.Table(3,2, True)
-        table.attach(gtk.Label("Type"), 0,1,0,1)
-        table.attach(self.authType, 1,2,0,1)
-        table.attach(gtk.Label("User"), 0,1,1,2)
-        table.attach(self.user, 1,2,1,2)
-        table.attach(gtk.Label("Password"), 0,1,2,3)
-        table.attach(self.pwd, 1,2,2,3)
-        self.fAuth.add(table)
-        
-        #HBox
-        saveButton = gtk.Button("Save", gtk.STOCK_SAVE)
-        saveButton.connect("clicked", self.saveSettings)
-        hbox = gtk.HBox(False, 0)
-        hbox.pack_end(saveButton, False, False, 0)
-        
-        
-        #Add everything to VBox
-        
-        self.vbox.pack_start(self.fProj, False, False, 0)
-        self.vbox.pack_start(self.server_frame, False, False, 0)
-        self.vbox.pack_start(fService, False, False, 0)
-        self.vbox.pack_start(self.fBinding, False, False, 0)
-        self.vbox.pack_start(self.fAuth, False, False, 0)
-        self.vbox.pack_start(hbox, False, False, 0)
-        self.vbox.show_all()
-
-        
-    def saveSettings(self, w):
-        d = {}
-        d['name']  = self.prjName.get_text()
-        d['url'] = self.uri.get_text()
-        d['hostname'] = self.IP.get_text()
-        d['port'] = self.port.get_text()
-        d['header'] = self.servHeader.get_text()
-        d['user'] = self.user.get_text()
-        d['pwd'] = self.pwd.get_text()
-        project_manager.saveProject(d)
-
-"""
