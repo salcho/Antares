@@ -11,6 +11,7 @@ from core.utils.project_manager import project_manager
 from core.utils.project_manager import AUTH_BASIC
 from core.utils.project_manager import AUTH_WINDOWS
 from core.utils.project_manager import AUTH_UNKNOWN
+from core.data import ws_protocols
 from core.data import DEFAULT_ANYURI_VALUE
 from core.data import DEFAULT_BASE64BINARY_VALUE
 from core.data import DEFAULT_BOOLEAN_VALUE
@@ -190,6 +191,16 @@ class WSDLHelper(object):
 		"""
 		self.serviceName = self.ws_client.sd[0].service.name
 		self.portName = self.ws_client.sd[0].ports[0][0].name
+
+	def findProtocol(self, ns):
+		"""
+		See if we recognize this protocol from it's
+		namespace
+		"""
+		for k,v in ws_protocols.items():
+			if ns in v:
+				return k
+		return None
 		
 	# -------------------------
 	# Manipulating requests

@@ -48,3 +48,7 @@ ERROR_GENERIC_REGEXP = (
                           r'^[<.*>]*?(.*%s.*)[<.*>]*$'
                           )
 EXTRACT_IP_REGEX = r'[0-9]+(?:\.[0-9]+){3}'
+
+# WS specifications dictionary
+ws_protocols = {'WS-Addressing':'http://schemas.xmlsoap.org/ws/2004/08/addressing', 'WS-Policy':'http://schemas.xmlsoap.org/ws/2004/09/policy', 
+		'WS-MetadataExchange':'http://schemas.xmlsoap.org/ws/2004/09/mex'}

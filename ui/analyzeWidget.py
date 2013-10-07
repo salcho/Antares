@@ -12,7 +12,7 @@ from core.utils.analyzer import RSP_DICT
 from core.utils.analyzer import SIZE_DICT
 from core.data import logger
 from ui.IWidget import IWidget
-from lib.pygtk_chart import pie_chart
+from pygtk_chart import pie_chart
 import gtk
 import pygtk
 

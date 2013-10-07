@@ -45,19 +45,25 @@ class xsdWidget(IWidget):
 		frame = gtk.Frame('Protocols')
 		frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
 		namespaces = self.wsdl.getNamespaces()
-		table = gtk.Table(len(namespaces)+1, 2, False)
+		table = gtk.Table(len(namespaces)+1, 3, False)
 		label = gtk.Label()
 		label.set_markup(STRESS_ITEM_FORMAT % 'NS')
 		table.attach(label, 0, 1, 0, 1)
 		label = gtk.Label()
 		label.set_markup(STRESS_ITEM_FORMAT % 'URI')
 		table.attach(label, 1, 2, 0, 1)
+		label = gtk.Label()
+		label.set_markup(STRESS_ITEM_FORMAT % 'SPEC')
+		table.attach(label, 2, 3, 0, 1)
 		row = 1
 		for k,v in namespaces.items():
 			label = gtk.Label()
 			label.set_markup(BOLD_FORMAT % k)
 			table.attach(label, 0, 1, row, row+1)
 			table.attach(gtk.Label(v), 1, 2, row, row+1)
+			p = self.wsdl.findProtocol(v)
+			if p:
+				table.attach(gtk.Label(p), 2, 3, row, row+1)
 			row += 1
 		frame.add(table)
 		sw.add_with_viewport(frame)
