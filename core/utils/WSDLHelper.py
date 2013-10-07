@@ -35,6 +35,7 @@ from core.data import DEFAULT_LONG_VALUE
 from suds.client import Client
 from suds.client import TransportError
 from suds.transport.https import HttpAuthenticated
+from suds.transport.https import WindowsHttpAuthenticated
 from suds.sax.text import Raw
 from suds import WebFault
 from suds import null
@@ -59,7 +60,7 @@ class WSDLHelper(object):
 
 	def __init__(self):
 		#logging.basicConfig(level=logging.DEBUG)
-		#logging.getLogger('suds.client').setLevel(logging.DEBUG)
+		#logging.getLogger('suds.transport').setLevel(logging.DEBUG)
 		self.ws_client = None
 		# client lib, used when loading wsdl from file
 		self.server_client = None
@@ -108,8 +109,8 @@ class WSDLHelper(object):
 					except URLError as e:
 						try:
 							if e.code == 401:
-								msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
-								logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+								msg = 'Error: Something went wrong while trying to authenticate with saved credentials -> %s' % str(e)
+								logger.error('Credentials %s:%s [Basic] for project %s stopped working' % (project_manager.getUsername(), 
 																									project_manager.getPassword(), 
 																									project_manager.getName()))
 								return msg
@@ -120,11 +121,11 @@ class WSDLHelper(object):
 				try:
 					import ntlm
 					if project_manager.getUsername() and project_manager.getPassword():
-						ntlm_transport = HttpAuthenticated(username='%s\\%s' % (project_manager.getDomain(), project_manager.getUsername()), 
+						ntlm_transport = WindowsHttpAuthenticated(username='%s\\%s' % (project_manager.getDomain(), project_manager.getUsername()), 
 														password=project_manager.getPassword())
-						self.ws_client = Client(url, transport=ntlm_transport, faults=True, prettyxml=True, cache=None)
 						self.server_client = project_manager.createNTLMRequest(project_manager.getUsername(), project_manager.getPassword(), 
 																		project_manager.getURL(), project_manager.getDomain())
+						self.ws_client = Client(url, transport=ntlm_transport, faults=True, prettyxml=True, cache=None)
 				except ImportError:
 					msg = "Error: The project you're trying to load uses Windows authentication\n"
 					msg += "but we couldn't load the proxy_ntlm third party package.\n"
@@ -132,8 +133,8 @@ class WSDLHelper(object):
 					return msg
 				
 				except (antaresWrongCredentialsException, TransportError) as e:
-					msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
-					logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
+					msg = 'Error: Something went wrong while trying to authenticate with saved credentials -> %s' % str(e) 
+					logger.error('Credentials %s:%s [NTLM] for project %s stopped working' % (project_manager.getUsername(), 
 																						project_manager.getPassword(), 
 																						project_manager.getName()))
 					return msg
@@ -409,6 +410,13 @@ class WSDLHelper(object):
 				return self.server_client.headers.dict
 		except:
 			return self.server_client.headers.dict
+		
+	def getNamespaces(self):
+		"""
+		Get all namespaces from the <definitions> tag.
+		This should gives us a fair idea of what protocols are in use.
+		""" 
+		return self.ws_client.wsdl.root.nsprefixes
 
 	def setPort(self, pName):
 		if pName != '':

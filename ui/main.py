@@ -120,6 +120,7 @@ class CustomWindow():
 				
 				# Test for authentication methods on the application layer
 				ret = project_manager.detectProtocolAuth(url.get_text())
+				auth_dict = None
 				if ret:
 					# Basic auth!
 					if ret == AUTH_BASIC:
@@ -183,25 +184,25 @@ class CustomWindow():
 					b = gtk.CheckButton(projs.pop())
 					b.connect("toggled", self.projSelected, b.get_label())
 					vbox.pack_start(b, True, True, 0)
-			chkbtn = gtk.CheckButton('Read WSDL from file?')
-			chkbtn.connect("toggled", self.readFrom)
-			chkbtn.set_active(False)
+			fromfile_btn = gtk.CheckButton('Read WSDL from file?')
+			fromfile_btn.connect("toggled", self.readFrom)
+			fromfile_btn.set_active(False)
 			savewsdl_btn = gtk.CheckButton("Save WSDL automatically?")
 			savewsdl_btn.connect("toggled", self.saveWSDL)
 			savewsdl_btn.set_active(False)
 			
 			frame.add(vbox)
 			dialog.vbox.pack_start(frame, True, True, 0)
-			dialog.vbox.pack_start(chkbtn, True, True, 0)
+			dialog.vbox.pack_start(fromfile_btn, True, True, 0)
 			dialog.vbox.pack_start(savewsdl_btn, True, True, 0)
 			dialog.show_all()
 			rsp = dialog.run()
 			if rsp == gtk.RESPONSE_OK:
-				ret = project_manager.loadProject(self.currProject, savewsdl_btn.get_active(), chkbtn.get_active())
+				ret = project_manager.loadProject(self.currProject, savewsdl_btn.get_active(), fromfile_btn.get_active())
 				if 'Error' in ret:
 					self.showErrorDialog(ret)
 
-				if chkbtn.get_active():
+				if fromfile_btn.get_active():
 					self.currProject = 'file://' + project_manager.getWSDLPath()
 				else:
 					self.currProject = project_manager.getURL()
