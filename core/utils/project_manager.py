@@ -63,7 +63,12 @@ class projMan:
 				wsdl = urllib2.urlopen(url)
 			self.proj_name = name
 			self.proj_url = url
-			os.chdir(paths['main_path'] + os.path.sep + paths['projects_dir'])
+			main = paths['main_path'] + os.path.sep + paths['projects_dir']
+			if os.path.exists(main):
+				os.chdir(paths['main_path'] + os.path.sep + paths['projects_dir'])
+			else:
+				os.mkdirs(main)
+				os.chdir(main)
 			if os.path.exists(os.path.curdir + os.path.sep + name):
 				raise os.error
 			os.mkdir(name)
