@@ -10,7 +10,6 @@ from ui.TestRequestWidget import TestRequestWidget
 from ui.injWidget import injWidget
 from ui.xsdWidget import xsdWidget
 from ui.analyzeWidget import analyzeWidget
-from ui.dosWidget import dosWidget
 from ui.loggerWidget import loggerWidget
 
 CONFIG_TAB = 0
@@ -53,11 +52,6 @@ class mainNotebook(gtk.Notebook):
         injwgt.start()
         self.tabs.append(injwgt)
         self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injector'))
-        #DoS wdgt
-        doswgt = dosWidget()
-        doswgt.start()
-        self.tabs.append(doswgt)
-        self.notebook.append_page(doswgt.getWidget(), gtk.Label('DoS'))
         #Analyze wdgt
         anawgt = analyzeWidget()
         anawgt.start()
