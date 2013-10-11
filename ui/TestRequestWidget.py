@@ -77,11 +77,14 @@ class TestRequestWidget(IWidget):
 		btnCdata.connect('clicked', self.addCDATA)
 		btnCmnt = gtk.Button('Comment selection')
 		btnCmnt.connect('clicked', self.comment)
+		button = gtk.Button('Get HTTP message')
+		button.connect('clicked', self.copyHTTPMessage)
 		self.inProcess = gtk.Image()
 		self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
 		box.add(btnSend)
 		box.add(btnCdata)
 		box.add(btnCmnt)
+		box.add(button)
 		box.add(self.inProcess)
 		frame3.add(box)
 		
@@ -166,5 +169,50 @@ class TestRequestWidget(IWidget):
 
 	def getWidget(self):
 		return self.results_vbox
-
+	
+	def copyHTTPMessage(self, widget):
+		"""
+		Generate a simple HTTP Message to call this service from other tools
+		"""
+		if not self.opName:
+			return
+		popup = gtk.Window()
+		popup.set_title( "HTTP Message" )
+		popup.set_modal( True )
+		popup.resize(600,500)
+		popup.set_type_hint( gtk.gdk.WINDOW_TYPE_HINT_DIALOG )
+		popup.connect( "destroy", lambda *w:popup.destroy() )
+		vb = gtk.VBox(False, 2)
+		frame = gtk.Frame('*')
+		sw = gtk.ScrolledWindow()
+		sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+		buff = gtk.TextBuffer()
+		# Get object's path from URL
+		pkt = "POST /%s HTTP/1.1\n" %  "/".join(project_manager.getURL().split('/')[3:])
+		# Get IP
+		pkt += "Host: %s\n" % project_manager.getURL().split('/')[2]
+		pkt += "Content-Type: text/xml; charset=utf-8\n"
+		# Get SOAPAction header
+		pkt += "SOAPAction: %s\n" % core.iswsdlhelper().getSOAPActionHeader(self.opName)
+		# Get XML
+		content = self.TVRq.get_buffer().get_text(*self.TVRq.get_buffer().get_bounds()) + "\n\n"
+		pkt += "Content-Length: %d\n\n" % len(content)
+		pkt += content
+		#soup = BeautifulSoup(pkt)
+		buff.set_text(pkt)
+		textview = gtk.TextView(buffer=buff)
+		textview.set_editable(True)
+		textview.set_wrap_mode(gtk.WRAP_NONE)
+		textview.set_justification(gtk.JUSTIFY_LEFT)
+		textview.set_cursor_visible(True)
+		sw.show_all()
+		sw.add_with_viewport(textview)
+		sw.set_size_request(400, -1)
+		vb.pack_start(sw, True, True, 0)
+		btn = gtk.Button('Close', gtk.STOCK_CLOSE)
+		btn.connect('clicked', lambda *w: popup.destroy() )
+		vb.pack_start(btn, False, False, 0)
+		frame.add(vb)
+		popup.add(frame)
+		popup.show_all()
 

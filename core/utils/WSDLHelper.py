@@ -160,6 +160,8 @@ class WSDLHelper(object):
 				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
 		except exceptions.ValueError:
 			msg = "Error: Malformed URL\n" + url
+		except URLError:
+			msg = "Error: No route to host\n " + url
 		except os.error:
 			msg = "Error: Can't read offline WSDL file"
 		except SAXParseException as e:
@@ -428,6 +430,13 @@ class WSDLHelper(object):
 		This should gives us a fair idea of what protocols are in use.
 		""" 
 		return self.ws_client.wsdl.root.nsprefixes
+	
+	def getSOAPActionHeader(self, opName):
+		for op in self.ws_client.wsdl.root.childrenAtPath('binding/operation'):
+			if opName == op.getAttribute('name').value:
+				soap_op = op.getChild('operation')
+				return soap_op.getAttribute('soapAction').value
+		return None
 
 	def setPort(self, pName):
 		if pName != '':
