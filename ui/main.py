@@ -63,11 +63,15 @@ class CustomWindow():
 					</menu>
 				</menubar>
 				<toolbar name="ToolBar">
-					<toolitem action="Exit" />
+					<toolitem action="CreateProject" />
 					<separator />
 					<toolitem action="LoadProject" />
 					<separator />
+					<toolitem action="DeleteProject" />
+					<separator />
 					<toolitem action="SaveProject" />
+					<separator />
+					<toolitem action="Exit" />
 				</toolbar>
 			</ui>
 			"""
@@ -79,7 +83,7 @@ class CustomWindow():
 									  # xml, icon, label, accelerator, tooltip, callback 
 									  ('CreateProject', gtk.STOCK_ADD, ('Create project'), None, 'Create a new project', self.createProject),
 									  ('LoadProject', gtk.STOCK_CONVERT, ('_Load project'), None, 'Load an existing project', self.loadProject),
-									  ('DeleteProject', gtk.STOCK_DELETE, ('Delete project'), None, 'Delete this project', self.deleteProject),
+									  ('DeleteProject', gtk.STOCK_DELETE, ('Delete project'), None, 'Delete a project', self.deleteProject),
 									  ('SaveProject', gtk.STOCK_SAVE, ('_Save project'), None, 'Save this project', self.saveProject),
 									  ('ProjectsMenu', None, ('_Projects')),
 									  ('Exit', gtk.STOCK_QUIT, ('_Exit'), None, 'Exit framework', gtk.main_quit),
@@ -163,6 +167,8 @@ class CustomWindow():
 					self.showErrorDialog(ret)
 				else:
 					self.showMessageDialog("Project created!")
+			else:
+				self.showMessageDialog("Name or URL missing. Try again!")
 	
 		dialog.destroy()
 		

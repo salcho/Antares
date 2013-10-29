@@ -63,7 +63,7 @@ class analyzeWidget(IWidget):
             table.attach(gtk.Label("Payloads: "), 0, 1, 2, 3)
             table.attach(gtk.Label(str(amount)), 1, 2, 2, 3)
             table.attach(gtk.Label("Regex hits: "), 0, 1, 3, 4)
-            regex_cnt = "<b>%s</b>" % regex_stats[PLUGIN_DICT][plugin] if regex_stats else '<b>0</b>'
+            regex_cnt = "<b>%s</b>" % regex_stats[PLUGIN_DICT][plugin] if regex_stats[PLUGIN_DICT] else '<b>0</b>'
             label = gtk.Label()
             label.set_markup(regex_cnt)
             table.attach(label, 1, 2, 3, 4)
