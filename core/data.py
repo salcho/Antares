@@ -50,5 +50,9 @@ ERROR_GENERIC_REGEXP = (
 EXTRACT_IP_REGEX = r'[0-9]+(?:\.[0-9]+){3}'
 
 # WS specifications dictionary
-ws_protocols = {'WS-Addressing':'http://schemas.xmlsoap.org/ws/2004/08/addressing', 'WS-Policy':'http://schemas.xmlsoap.org/ws/2004/09/policy', 
-		'WS-MetadataExchange':'http://schemas.xmlsoap.org/ws/2004/09/mex'}
+ws_protocols = [('WS-Addressing','http://schemas.xmlsoap.org/ws/2004/08/addressing'), ('WS-Policy','http://schemas.xmlsoap.org/ws/2004/09/policy'), 
+		('WS-MetadataExchange','http://schemas.xmlsoap.org/ws/2004/09/mex'), ('XML Schema','http://www.w3.org/2001/XMLSchema'),
+		('WS-Policy','http://schemas.xmlsoap.org/ws/2002/12/policy'), ('WS-Addressing 1.0','http://www.w3.org/2005/08/addressing'),
+		('SOAP-1.1','http://schemas.xmlsoap.org/wsdl/soap/'), ('SOAP-1.1','http://schemas.xmlsoap.org/soap/envelope'),
+		('SOAP-1.2','http://www.w3.org/2003/05/soap-envelope'), ('SOAP-1.2','http://www.w3.org/2003/05/soap-encoding'), ('SOAP-1.2','http://www.w3.org/2003/05/soap-rpc'),
+		('SOAP-1.2','http://schemas.xmlsoap.org/wsdl/soap12'), ('WS-Addresing Metadata','http://www.w3.org/2007/05/addressing/metadata')]

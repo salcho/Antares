@@ -117,8 +117,8 @@ class CustomWindow():
 		rsp = dialog.run()
 		if rsp == gtk.RESPONSE_OK:
 			if name.get_text() != '' and url.get_text() != "":
-				if not url.get_text().lower().startswith('http') or url.get_text().lower().startswith('https'):
-					self.showErrorDialog('Correct URLs must begin with HTTP or HTTPS protocols.')
+				if not url.get_text().lower().startswith('http') or not url.get_text().lower().startswith('https'):
+					self.showErrorDialog('Correct URLs must begin with HTTP or HTTPS protocols: %s' % url.get_text().lower()[0:5])
 					dialog.destroy()
 					return 
 				

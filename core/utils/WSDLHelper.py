@@ -199,8 +199,8 @@ class WSDLHelper(object):
 		See if we recognize this protocol from it's
 		namespace
 		"""
-		for k,v in ws_protocols.items():
-			if ns in v:
+		for k,v in ws_protocols:
+			if v in ns:
 				return k
 		return None
 		
