@@ -56,7 +56,7 @@ class xsdWidget(IWidget):
 		label.set_markup(STRESS_ITEM_FORMAT % 'SPEC')
 		table.attach(label, 2, 3, 0, 1)
 		row = 1
-		for k,v in namespaces.items():
+		for k,v in sorted(namespaces.items()):
 			label = gtk.Label()
 			label.set_markup(BOLD_FORMAT % k)
 			table.attach(label, 0, 1, row, row+1)

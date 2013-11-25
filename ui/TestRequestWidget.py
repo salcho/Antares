@@ -77,14 +77,17 @@ class TestRequestWidget(IWidget):
 		btnCdata.connect('clicked', self.addCDATA)
 		btnCmnt = gtk.Button('Comment selection')
 		btnCmnt.connect('clicked', self.comment)
-		button = gtk.Button('Get HTTP message')
-		button.connect('clicked', self.copyHTTPMessage)
+		btn_http = gtk.Button('Get HTTP message')
+		btn_http.connect('clicked', self.copyHTTPMessage)
+		btn_addr = gtk.Button('Add WS-Addressing')
+		btn_addr.connect('clicked', self.addAddressing)
 		self.inProcess = gtk.Image()
 		self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
 		box.add(btnSend)
 		box.add(btnCdata)
 		box.add(btnCmnt)
-		box.add(button)
+		box.add(btn_http)
+		box.add(btn_addr)
 		box.add(self.inProcess)
 		frame3.add(box)
 		
@@ -215,4 +218,15 @@ class TestRequestWidget(IWidget):
 		frame.add(vb)
 		popup.add(frame)
 		popup.show_all()
+
+	def addAddressing(self, widget):
+		"""
+		Get the user a request template using WS-Addressing
+		"""
+		if not self.opName:
+			return
+		wsdl = core.iswsdlhelper()
+		if wsdl:
+			pass
+		
 

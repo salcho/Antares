@@ -38,6 +38,9 @@ from suds.client import TransportError
 from suds.transport.https import HttpAuthenticated
 from suds.transport.https import WindowsHttpAuthenticated
 from suds.sax.text import Raw
+from suds.sax.element import Element
+from suds.xsd.sxbasic import Import
+from suds.sax.attribute import Attribute
 from suds import WebFault
 from suds import null
 from suds import TypeNotFound
@@ -51,10 +54,13 @@ import exceptions
 import urllib2
 import os
 import logging
+import socket
+import fcntl
+import struct
 
 # TODO: Terminar tipos de datos!!! http://www.w3.org/TR/xmlschema-2/#built-in-datatypes
 CONTENT_TYPE_EXCEPTION = "Cannot process the message because the content type"
-
+MUST_UNDERSTAND = Attribute('SOAP-ENV:mustUnderstand', 'true')
 
 class WSDLHelper(object):
 
@@ -199,8 +205,8 @@ class WSDLHelper(object):
 		See if we recognize this protocol from it's
 		namespace
 		"""
-		for k,v in ws_protocols.items():
-			if ns in v:
+		for k,v in ws_protocols:
+			if v in ns:
 				return k
 		return None
 		
@@ -287,6 +293,30 @@ class WSDLHelper(object):
 			txt = self.processException(e)
 			ret = (txt, self.ws_client.messages['rx'])
 		return ret 
+
+	def addAddressing(self, opName):
+		wsa = ('wsa', 'http://schemas.xmlsoap.org/2004/08/addressing')
+		wsa10 = ('wsa10', 'http://www.w3.org/2005/08/addressing')
+		local_ip = self.getLocalIP()
+		if not local_ip:
+			local_ip = '127.0.0.1'
+		ep_ref = Element('EndpointReference', ns=wsa).insert(Element('Address', wsa)).setText('http://%s/antares_endpoint' % local_ip)
+		wsa_from = Element('From', ns=wsa).insert(ep_ref)
+		fault_to = Element('FaultTo', ns=wsa).insert(ep_ref)
+		reply_to = Element('ReplyTo', ns=wsa).insert(ep_ref)
+		reply_to.append(MUST_UNDERSTAND)
+		goes_to = Element('To', ns=wsa).setText('XXXXXXXXXXXXXXXX').append(MUST_UNDERSTAND)
+		action = Element('Action', ns=wsa).setText(self.getAction(opName))
+		
+		headers = []
+		headers.append(wsa_from)
+		headers.append(fault_to)
+		headers.append(reply_to)
+		headers.append(goest_to)
+		headers.append(action)
+		#pass!
+		
+		
 	
 	def processException(self, except_obj):
 		"""
@@ -317,6 +347,53 @@ class WSDLHelper(object):
 	# ------------------
 	# Getters and setters
 	# ------------------"
+
+	def getAction(cl, method):
+	        try:
+        	        m = getattr(cl.service, method)
+                	action = cl.wsdl.services[0].ports[0].methods[method].soap.action
+        	        action = action.replace('"', '')
+	        except MethodNotFound:
+        	        # "[-] MethodNotFound"
+                	return None
+	        return action
+
+	def getInterfaces(self):
+		"""
+		Get all interfaces on the system
+		Found on http://code.activestate.com/recipes/439093/#c1
+		"""
+	        max_possible = 128 # arbitrary. raise if needed.
+        	bytes = max_possible * 32
+	        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	        names = array.array('B', '\0' * bytes)
+	        outbytes = struct.unpack('iL', fcntl.ioctl(
+	        s.fileno(),
+	        0x8912, # SIOCGIFCONF
+	        struct.pack('iL', bytes, names.buffer_info()[0])
+	        ))[0]
+	        namestr = names.tostring()
+	        lst = []
+	        for i in range(0, outbytes, 40):
+	                name = namestr[i:i+16].split('\0', 1)[0]
+	                ip = namestr[i+20:i+24]
+	                lst.append(name)
+	        return lst
+
+	def getLocalIP(self):
+		"""
+		Get IP address associated to an interface
+		Found on http://code.activestate.com/recipes/439094-get-the-ip-address-associated-with-a-network-inter/
+		"""
+		ifaces = getInterfaces()
+		for ifname in sorted(ifaces):
+			try:
+				s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				ret = socket.inet_ntoa(fcntl.ioctl(s.fileno(), 0x8915, struct.pack('256s', ifname[:15]))[20:24])
+				return ret
+			except IOError:
+				continue
+		return None
 
 	def getMethods(self):
 		"""
