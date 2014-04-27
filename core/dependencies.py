@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from core.data import logger
-from core.exceptions import antaresDependenciesException
+from controller import exceptions
 
 def checkDependencies():
 	failed_deps = 0

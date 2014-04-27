@@ -4,22 +4,21 @@ Created on Feb 25, 2013
 @author: Santiago Diaz - salchoman@gmail.com
 '''
 
-from core.fwCore import core
-from core.utils.analyzer import HTTP_DICT
-from core.utils.analyzer import PARAMS_DICT
-from core.utils.analyzer import PLUGIN_DICT
-from core.utils.analyzer import RSP_DICT
-from core.utils.analyzer import SIZE_DICT
+from core.ResponseAnalyzer import HTTP_DICT
+from core.ResponseAnalyzer import PARAMS_DICT
+from core.ResponseAnalyzer import PLUGIN_DICT
+from core.ResponseAnalyzer import RSP_DICT
+from core.ResponseAnalyzer import SIZE_DICT
 from core.data import logger
 from ui.IWidget import IWidget
 from pygtk_chart import pie_chart
 import gtk
-import pygtk
 
 class analyzeWidget(IWidget):
     
-    def __init__(self):
+    def __init__(self, analyzer):
         IWidget.__init__(self)
+        self.analyze = analyzer
         self.hbox = None
         self.info_frame = gtk.Frame("Statistics")
         self.plugin_frame = gtk.Frame("Plugins")
@@ -33,7 +32,6 @@ class analyzeWidget(IWidget):
         self.hbox.show_all()
         
     def refresh(self):
-        self.analyzer = core.isAnalyzer()
         if self.analyzer:
             global_stats = self.analyzer.getStats()
         else:

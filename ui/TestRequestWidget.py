@@ -6,10 +6,9 @@ Created on Feb 12, 2013
 
 import gtk
 from bs4 import BeautifulSoup
-from core.fwCore import core
-from core.utils.project_manager import project_manager
 from ui.IWidget import IWidget
 from suds import WebFault
+from core.WSDLHelper import WSDLHelper
 
 class TestRequestWidget(IWidget):
 	'''
@@ -17,7 +16,9 @@ class TestRequestWidget(IWidget):
 	IMPORTANT: This widget needs to be started!
 	'''
 
-	def __init__(self):
+	def __init__(self, wsdlh, pm):
+		self.pm = pm
+		self.wsdlhelper = wsdlh
 		IWidget.__init__(self)
 		self.oCombobox = None
 		self.opName = None
@@ -34,12 +35,13 @@ class TestRequestWidget(IWidget):
 		frame2.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
 		self.oCombobox = gtk.combo_box_entry_new_text()
 		self.oCombobox.append_text('')
-		if core.iswsdlhelper():
-			ops = core.iswsdlhelper().getMethods()
-			for op in ops:
-				self.oCombobox.append_text(op)
-				self.oCombobox.child.connect('changed', self.changeOp)
-			frame.add(self.oCombobox)
+
+		ops = self.wsdlhelper.getMethods()
+		for op in ops:
+			self.oCombobox.append_text(op)
+			self.oCombobox.child.connect('changed', self.changeOp)
+		frame.add(self.oCombobox)
+			
 		self.results_vbox = gtk.VBox(False, 0)
 		hpaned = gtk.HPaned()
 		hpaned.show()
@@ -104,21 +106,20 @@ class TestRequestWidget(IWidget):
 		self.inProcess.show()
 		buf = self.TVRq.get_buffer()
 		start, end = buf.get_bounds()
-		wsdl = core.iswsdlhelper()
-		if wsdl:
-			try:
-				xml = wsdl.sendRaw(self.opName, buf.get_text(start, end))
-				while gtk.events_pending():
-					gtk.main_iteration(False)
-	
-				buf = self.TVRp.get_buffer()
-				buf.set_text(str(xml))
-				
-				self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
-				self.inProcess.show()
-			except Exception as e:
-				buf = self.TVRp.get_buffer()
-				buf.set_text(str(e))
+		
+		try:
+			xml = self.wsdlhelper.sendRaw(self.opName, buf.get_text(start, end))
+			while gtk.events_pending():
+				gtk.main_iteration(False)
+
+			buf = self.TVRp.get_buffer()
+			buf.set_text(str(xml))
+			
+			self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
+			self.inProcess.show()
+		except Exception as e:
+			buf = self.TVRp.get_buffer()
+			buf.set_text(str(e))
 
 	def changeOp(self, entry):
 		if entry.get_text() != '':
@@ -128,23 +129,22 @@ class TestRequestWidget(IWidget):
 				#while gtk.events_pending():
 				#	gtk.main_iteration(False)
 				self.inProcess.show()
-				if core.iswsdlhelper():
-					wsdl = core.iswsdlhelper()
-					req, res = wsdl.getRqRx(self.opName)
-					buf = self.TVRq.get_buffer()
-					buf.set_text(str(req)) if req else buf.set_text('ERROR CREATING REQUEST')
-					buf = self.TVRp.get_buffer()
-					buf.set_text(str(res)) if res else buf.set_text('ERROR CREATING RESPONSE')
+
+				req, res = self.wsdlhelper.getRqRx(self.opName)
+				buf = self.TVRq.get_buffer()
+				buf.set_text(str(req)) if req else buf.set_text('ERROR CREATING REQUEST')
+				buf = self.TVRp.get_buffer()
+				buf.set_text(str(res)) if res else buf.set_text('ERROR CREATING RESPONSE')
+				
+				if req and res:	
+					self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
+				else:
+					self.inProcess.set_from_stock(gtk.STOCK_STOP, gtk.ICON_SIZE_BUTTON)
 					
-					if req and res:	
-						self.inProcess.set_from_stock(gtk.STOCK_YES, gtk.ICON_SIZE_BUTTON)
-					else:
-						self.inProcess.set_from_stock(gtk.STOCK_STOP, gtk.ICON_SIZE_BUTTON)
-						
-					self.inProcess.show()
+				self.inProcess.show()
 
 	def refresh(self, widget):
-		ops = core.iswsdlhelper().getMethods()
+		ops = self.wsdlhelper.getMethods()
 		self.oCombobox = gtk.combo_box_new_text()
 		self.oCombobox.append_text('')
 		for op in ops:
@@ -191,12 +191,12 @@ class TestRequestWidget(IWidget):
 		sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		buff = gtk.TextBuffer()
 		# Get object's path from URL
-		pkt = "POST /%s HTTP/1.1\n" %  "/".join(project_manager.getURL().split('/')[3:])
+		pkt = "POST /%s HTTP/1.1\n" %  "/".join(self.pm.getURL().split('/')[3:])
 		# Get IP
-		pkt += "Host: %s\n" % project_manager.getURL().split('/')[2]
+		pkt += "Host: %s\n" % self.pm.getURL().split('/')[2]
 		pkt += "Content-Type: text/xml; charset=utf-8\n"
 		# Get SOAPAction header
-		pkt += "SOAPAction: %s\n" % core.iswsdlhelper().getSOAPActionHeader(self.opName)
+		pkt += "SOAPAction: %s\n" % self.wsdlhelper.getSOAPActionHeader(self.opName)
 		# Get XML
 		content = self.TVRq.get_buffer().get_text(*self.TVRq.get_buffer().get_bounds()) + "\n\n"
 		pkt += "Content-Length: %d\n\n" % len(content)
@@ -225,8 +225,4 @@ class TestRequestWidget(IWidget):
 		"""
 		if not self.opName:
 			return
-		wsdl = core.iswsdlhelper()
-		if wsdl:
-			pass
-		
 

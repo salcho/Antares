@@ -4,21 +4,22 @@ Created on Feb 20, 2013
 @author: Santiago Diaz M.
 '''
 
-from core.fwCore import core
 from ui.IWidget import IWidget
 from core.utils.wsresponse_object import wsResponse
 import gtk
 
 class injWidget(IWidget):
 	
-	def __init__(self):
+	def __init__(self, wsdlh, plugman, callUI):
 		IWidget.__init__(self)
 		self.hbox = gtk.HBox(False, 0)
 
 		self.selected_op = None
 		self.selected_params = []
 		self.selected_payloads = []
-		self.wsdl = core.iswsdlhelper()
+		self.wsdl = wsdlh
+		self.plug_man = plugman
+		self.callUI = callUI
 		self.progressbar = None
 		self.num_threads = gtk.Entry(0)
 		self.tree_model = None
@@ -112,42 +113,40 @@ class injWidget(IWidget):
 		
 	# Fill this frame with loaded payloads
 	def fillFramePayloads(self):
-		plug_manager = core.isPluginManager()
-		if plug_manager:
-			self.frame_payloads.set_label("Payloads")
-			sw = gtk.ScrolledWindow()
-			sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
-			vbtnbox = gtk.VButtonBox()
-			vbtnbox.set_layout(gtk.BUTTONBOX_START)
-			vbtnbox.set_spacing(1)
-			for plug in plug_manager.getLoadedPlugins().values():
-				chkbtn = gtk.CheckButton(plug.getName())
-				chkbtn.connect("toggled", self.payloadSelected, chkbtn.get_label())
-				vbtnbox.add(chkbtn)
-			
-			hbox = gtk.HBox(False, 1)
-			hbox.pack_start(gtk.Label("Threads"))
-			hbox.pack_start(self.num_threads)
-			self.launch_button = gtk.Button('Launch', gtk.STOCK_EXECUTE)
-			self.launch_button.connect("clicked", self.launchAttack, plug_manager)
-			
-			self.stop_button = gtk.Button('Stop', gtk.STOCK_STOP)
-			self.stop_button.set_sensitive(False)
-			self.stop_button.connect("clicked", self.stopAttack, plug_manager)
-			
-			self.progressbar = gtk.ProgressBar(adjustment=None)
-			self.num_threads.set_buffer(gtk.EntryBuffer('5', 1))
-			self.num_threads.set_alignment(0.5)
-			
-			vbtnbox.add(gtk.HSeparator())
-			vbtnbox.add(self.getCheckButtons(vbtnbox))
-			vbtnbox.add(hbox)
-			vbtnbox.add(self.launch_button)
-			vbtnbox.add(self.stop_button)
-			vbtnbox.add(self.progressbar)
-			
-			sw.add_with_viewport(vbtnbox)
-			self.frame_payloads.add(sw)
+		self.frame_payloads.set_label("Payloads")
+		sw = gtk.ScrolledWindow()
+		sw.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
+		vbtnbox = gtk.VButtonBox()
+		vbtnbox.set_layout(gtk.BUTTONBOX_START)
+		vbtnbox.set_spacing(1)
+		for plug in self.plug_man.getLoadedPlugins().values():
+			chkbtn = gtk.CheckButton(plug.getName())
+			chkbtn.connect("toggled", self.payloadSelected, chkbtn.get_label())
+			vbtnbox.add(chkbtn)
+		
+		hbox = gtk.HBox(False, 1)
+		hbox.pack_start(gtk.Label("Threads"))
+		hbox.pack_start(self.num_threads)
+		self.launch_button = gtk.Button('Launch', gtk.STOCK_EXECUTE)
+		self.launch_button.connect("clicked", self.launchAttack)
+		
+		self.stop_button = gtk.Button('Stop', gtk.STOCK_STOP)
+		self.stop_button.set_sensitive(False)
+		self.stop_button.connect("clicked", self.stopAttack)
+		
+		self.progressbar = gtk.ProgressBar(adjustment=None)
+		self.num_threads.set_buffer(gtk.EntryBuffer('5', 1))
+		self.num_threads.set_alignment(0.5)
+		
+		vbtnbox.add(gtk.HSeparator())
+		vbtnbox.add(self.getCheckButtons(vbtnbox))
+		vbtnbox.add(hbox)
+		vbtnbox.add(self.launch_button)
+		vbtnbox.add(self.stop_button)
+		vbtnbox.add(self.progressbar)
+		
+		sw.add_with_viewport(vbtnbox)
+		self.frame_payloads.add(sw)
 			
 		self.frame_payloads.show_all()
 		
@@ -239,12 +238,12 @@ class injWidget(IWidget):
 				continue
 			
 	# Call plugin_manager and execute attack
-	def launchAttack(self, widget, plug_manager):
+	def launchAttack(self, widget):
 		if self.selected_op and self.selected_params and self.selected_payloads and int(self.num_threads.get_text()):
 			self.launch_button.set_sensitive(False)
 			self.stop_button.set_sensitive(True)
 			self.updateProgress(text='Waiting')
-			res_list = plug_manager.startAttack(self.selected_op, 
+			res_list = self.plug_man.startAttack(self.selected_op, 
 												self.selected_params, 
 												self.selected_payloads, 
 												int(self.num_threads.get_text()), 
@@ -252,7 +251,7 @@ class injWidget(IWidget):
 			
 			# Tell the analyzer to refresh this
 			from ui.fwNotebook import ANALYZE_TAB
-			ret = core.callUI(ANALYZE_TAB, 'refresh')
+			ret = self.callUI(ANALYZE_TAB, 'refresh')
 			self.updateProgress(text='Done')
 			if ret:
 				self.fillResultsFrame(res_list)
@@ -272,9 +271,9 @@ class injWidget(IWidget):
 		self.launch_button.set_sensitive(True)
 		return
 	
-	def stopAttack(self, widget, plug_manager):
+	def stopAttack(self, widget):
 		self.updateProgress(text="Stopping threads")
-		plug_manager.stopAttack()
+		self.plug_man.stopAttack()
 		self.stop_button.set_sensitive(False)
 		self.launch_button.set_sensitive(True)
 		

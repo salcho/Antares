@@ -4,19 +4,17 @@ Created on Feb 21, 2013
 @author = Santiago Diaz - salchoman@gmail.com
 '''
 
-from core.fwCore import core
 from ui.IWidget import IWidget
+from core.data import STRESS_ITEM_FORMAT
+from core.data import BOLD_FORMAT
 import gtk
 
-STRESS_ITEM_FORMAT = '<span foreground="#4071DC" size="large"><b>%s</b></span>'
-BOLD_FORMAT = '<b><i>%s</i></b>'
-
 class xsdWidget(IWidget):
-	def __init__(self):
+	def __init__(self, wsdlh):
 		IWidget.__init__(self)
 		self.vbox = None
 		self.oCombobox = None
-		self.wsdl = None
+		self.wsdl = wsdlh
 		self.selected_op = None
 		self.sw = None
 		#---
@@ -30,7 +28,6 @@ class xsdWidget(IWidget):
 		frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
 		self.oCombobox = gtk.combo_box_new_text()
 		self.oCombobox.append_text('')
-		self.wsdl = core.iswsdlhelper()
 		if self.wsdl:
 			for op in self.wsdl.getMethods():
 				self.oCombobox.append_text(op)
@@ -89,9 +86,9 @@ class xsdWidget(IWidget):
 		self.sw = gtk.ScrolledWindow()
 		self.sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
 		frame = gtk.Frame("Properties")
-		params = self.wsdl.getParamsSchema(self.selected_op)
+		params = self.wsdl.getParamsSchema(opName=self.selected_op)
 		if params and len(params) > 0:
-			table = fwTable(self.wsdl.getParamsSchema(self.selected_op), self.wsdl.getParamsNames(self.selected_op))
+			table = fwTable(self.wsdl, self.selected_op)
 			frame.add(table.getWidget())
 		else:
 			frame.add(gtk.Label("This method has no parameters!"))
@@ -101,33 +98,42 @@ class xsdWidget(IWidget):
 		self.vbox.show_all()	
 						
 class fwTable(IWidget):
-	def __init__(self, schemas, names):
+	def __init__(self, wsdl, oper):
+		schemas = wsdl.getParamsSchema(oper)
 		rows = 0
-		for s in schemas:
-			if s.children() != []:
-				rows += len(s.children())
-			else:
-				rows += 1
+		names = schemas.keys()
 		
-		self.table = gtk.Table(rows + 1, 6, False)
+		self.table = gtk.Table(len(schemas) + 1, 6, False)
 		self.table.attach(gtk.Label("Type "), 1, 2, 0, 1 )
 		self.table.attach(gtk.Label("Maximum value allowed"), 2, 3, 0, 1)
 		self.table.attach(gtk.Label("Minimum value allowed"), 3, 4, 0, 1)
 		self.table.attach(gtk.Label("Is nillable? "), 4, 5, 0, 1)
 		self.table.attach(gtk.Label("Is optional? "), 5, 6, 0, 1)
 		
-		
 		pos = 1
-		for s in schemas:
-			if s.children():
-				for elem in s.children():
-					child = elem[0]		
+		for arg,types in schemas.items():
+			if type(types) is dict:
+				for name,simple in types.items():
+					# If object is an enumeration
+					if '/' in simple:
+						label = gtk.Label()
+						label.set_markup("<b><i>%s</i></b> --> %s" % (arg, name))
+						self.table.attach(label, 0, 1, pos, pos + 1)
+						label = gtk.Label()
+						label.set_markup(STRESS_ITEM_FORMAT % 'enumeration')
+						self.table.attach(label, 1, 2, pos, pos + 1)
+						pos += 1
+						continue
+
+					child = wsdl.getElement(oper, name, cmplx=arg)		
 					label = gtk.Label()
-					label.set_markup("<b><i>%s</i></b> --> %s" % (s.name, child.name))
+					label.set_markup("<b><i>%s</i></b> --> %s" % (arg, name))
 					self.table.attach(label, 0, 1, pos, pos + 1)
 					label = gtk.Label()
-					label.set_markup(STRESS_ITEM_FORMAT % child.root.name)
+					label.set_markup(STRESS_ITEM_FORMAT % simple)
 					self.table.attach(label, 1, 2, pos, pos + 1)
+					
+					
 					self.table.attach(gtk.Label(str(child.max)), 2, 3, pos, pos + 1)
 					self.table.attach(gtk.Label(str(child.min)), 3, 4, pos, pos + 1)
 					img = gtk.Image()
@@ -142,30 +148,35 @@ class fwTable(IWidget):
 						img.set_from_stock(gtk.STOCK_APPLY, gtk.ICON_SIZE_BUTTON)
 					else:
 						img.set_from_stock(gtk.STOCK_CANCEL, gtk.ICON_SIZE_BUTTON)
+					
 					img.show()
 					self.table.attach(img, 5, 6, pos, pos + 1)
+					
 					pos += 1
 			else:
-				self.table.attach(gtk.Label(str(names[pos-1])), 0, 1, pos, pos + 1)
+				child = wsdl.getElement(oper, arg)
+				self.table.attach(gtk.Label(arg), 0, 1, pos, pos + 1)
 				label = gtk.Label()
-				label.set_markup('<span foreground="#4071DC" size="large"><b>%s</b></span>' % s.root.name)
+				label.set_markup('<span foreground="#4071DC" size="large"><b>%s</b></span>' % types)
 				self.table.attach(label, 1, 2, pos, pos + 1)
-				self.table.attach(gtk.Label(str(s.max)), 2, 3, pos, pos + 1)
-				self.table.attach(gtk.Label(str(s.min)), 3, 4, pos, pos + 1)
+				
+				self.table.attach(gtk.Label(str(child.max)), 2, 3, pos, pos + 1)
+				self.table.attach(gtk.Label(str(child.min)), 3, 4, pos, pos + 1)
 				img = gtk.Image()
-				if s.nillable:
+				if child.nillable:
 					img.set_from_stock(gtk.STOCK_APPLY, gtk.ICON_SIZE_BUTTON)
 				else:
 					img.set_from_stock(gtk.STOCK_CANCEL, gtk.ICON_SIZE_BUTTON)
 				img.show()
 				self.table.attach(img, 4, 5, pos, pos + 1)
 				img = gtk.Image()
-				if s.optional():
+				if child.optional():
 					img.set_from_stock(gtk.STOCK_APPLY, gtk.ICON_SIZE_BUTTON)
 				else:
 					img.set_from_stock(gtk.STOCK_CANCEL, gtk.ICON_SIZE_BUTTON)
 				img.show()
 				self.table.attach(img, 5, 6, pos, pos + 1)
+				
 				pos += 1
 	
 	def getWidget(self):

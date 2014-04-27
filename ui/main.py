@@ -4,22 +4,22 @@ Created on Jan 19, 2013
 @author: Santiago Diaz M. - salchoman@gmail.com
 '''
 
-import pygtk
 import gtk
 import cPickle 
-from core.utils.project_manager import project_manager
-from core.utils.project_manager import AUTH_BASIC
-from core.utils.project_manager import AUTH_WINDOWS
-from core.utils.project_manager import AUTH_UNKNOWN
-from core.exceptions import antaresException
+from core.Singleton import Singleton
+from core.data import AUTH_BASIC
+from core.data import AUTH_WINDOWS
+from core.data import AUTH_UNKNOWN
+from controller import exceptions
 
-class mainUI(object):
+class mainUI:
+	__metaclass__ = Singleton
 	
 	def __init__(self):
 		self.cw = None
 
-	def start(self):
-		self.cw = CustomWindow()
+	def start(self, launcher):
+		self.cw = CustomWindow(launcher)
 		self.cw.getWindow().show()
 		gtk.main()
 		
@@ -34,7 +34,9 @@ class mainUI(object):
 
 class CustomWindow():
 	
-	def __init__(self):
+	def __init__(self, launcher):
+		self.launcher = launcher
+		self.project_manager = self.launcher.getProjMan()
 		self.uiManager = None
 		self.actionGroup = None
 		self.currProject = None
@@ -117,13 +119,13 @@ class CustomWindow():
 		rsp = dialog.run()
 		if rsp == gtk.RESPONSE_OK:
 			if name.get_text() != '' and url.get_text() != "":
-				if not url.get_text().lower().startswith('http') or not url.get_text().lower().startswith('https'):
-					self.showErrorDialog('Correct URLs must begin with HTTP or HTTPS protocols: %s' % url.get_text().lower()[0:5])
+				if 'http://' not in url.get_text() and 'https://' not in url.get_text().lower():
+					self.showErrorDialog('Correct URLs must begin with HTTP or HTTPS protocols: %s' % url.get_text().lower())
 					dialog.destroy()
 					return 
 				
 				# Test for authentication methods on the application layer
-				ret = project_manager.detectProtocolAuth(url.get_text())
+				ret = self.project_manager.detectProtocolAuth(url.get_text())
 				auth_dict = None
 				if ret:
 					# Basic auth!
@@ -156,13 +158,13 @@ class CustomWindow():
 						return
 					
 				if ret and auth_dict:
-					ret = project_manager.createProject(name.get_text(), url.get_text(), auth_dict=auth_dict)
+					ret = self.project_manager.createProject(name.get_text(), url.get_text(), auth_dict=auth_dict)
 				elif ret and not auth_dict:
 					self.showErrorDialog('Please specify a valid set of credentials...')
 					dialog.destroy()
 					return
 				else:
-					ret = project_manager.createProject(name.get_text(), url.get_text())
+					ret = self.project_manager.createProject(name.get_text(), url.get_text())
 				if "error" in ret.lower():
 					self.showErrorDialog(ret)
 				else:
@@ -176,7 +178,7 @@ class CustomWindow():
 		dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
 		frame = gtk.Frame("Select project to load")
 		frame.set_shadow_type(gtk.SHADOW_ETCHED_IN)
-		projs = project_manager.projList()
+		projs = self.project_manager.projList()
 		if projs:
 			vbox = gtk.VBox(True, 0)
 			if len(projs) > 1:
@@ -204,19 +206,17 @@ class CustomWindow():
 			dialog.show_all()
 			rsp = dialog.run()
 			if rsp == gtk.RESPONSE_OK:
-				ret = project_manager.loadProject(self.currProject, savewsdl_btn.get_active(), fromfile_btn.get_active())
+				ret = self.project_manager.loadProject(self.currProject, savewsdl_btn.get_active(), fromfile_btn.get_active())
 				if 'Error' in ret:
 					self.showErrorDialog(ret)
 
 				if fromfile_btn.get_active():
-					self.currProject = 'file://' + project_manager.getWSDLPath()
+					self.currProject = 'file://' + self.project_manager.getWSDLPath()
 				else:
-					self.currProject = project_manager.getURL()
+					self.currProject = self.project_manager.getURL()
 					
 				# Create WSDLHelper object
-				from core.fwCore import core
-				self.core = core
-				if core.loadWSDL(self.currProject):
+				if self.launcher.loadWSDL(self.currProject):
 					self.addNotebook()
 					self.vbox.show_all()
 			
@@ -239,10 +239,9 @@ class CustomWindow():
 
 	def initNotebook(self):
 		from ui.fwNotebook import mainNotebook
-		self.main_notebook = mainNotebook()
-		if self.core.iswsdlhelper():
-			# Get settings, populate notebook
-			self.main_notebook.populate(project_manager.getCurrentSettings(), self.core.getServerInfo())
+		self.main_notebook = mainNotebook(self.launcher)
+		# Get settings, populate notebook
+		self.main_notebook.populate(self.project_manager.getCurrentSettings(), self.launcher.wsdlhelper.getHeaders())
 			
 	def projSelected(self, widget, action):
 		self.currProject = action
@@ -257,10 +256,10 @@ class CustomWindow():
 		dialog = gtk.Dialog("", None, gtk.DIALOG_MODAL, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
 		frame = gtk.Frame("Select project to delete")
 		frame.set_shadow_type(gtk.SHADOW_ETCHED_IN)
-		projs = project_manager.projList()
+		projs = self.project_manager.projList()
 		vbox = gtk.VBox(True, 0)
 		if projs:
-			vbox.pack_start(gtk.Label(project_manager.proj_name), True, True, 0)
+			vbox.pack_start(gtk.Label(self.project_manager.proj_name), True, True, 0)
 			vbox = gtk.VBox(True, 0)
 			if len(projs) > 1:
 					group = gtk.RadioButton(group=None, label=None)
@@ -278,7 +277,7 @@ class CustomWindow():
 			dialog.show_all()
 			rsp = dialog.run()
 			if rsp == gtk.RESPONSE_OK:
-					project_manager.deleteProject(self.todelete)
+					self.project_manager.deleteProject(self.todelete)
 					self.showMessageDialog("Project deleted")
 			dialog.destroy()
 		else:
@@ -303,9 +302,9 @@ class CustomWindow():
 		rsp = dialog.run()
 		if rsp == gtk.RESPONSE_OK:
 			if not realm.get_text() and (type == AUTH_BASIC or type == AUTH_WINDOWS):
-				realm.set_text(project_manager.getIP())
+				realm.set_text(self.project_manager.getIP())
 			if username.get_text() and password.get_text():
-				# Tell given credentials using the self.currSettings['auth'] structure in project_manager
+				# Tell given credentials using the self.currSettings['auth'] structure in self.project_manager
 				auth_dict = {'type': type, 
 							'domain': realm.get_text(), 
 							'user': username.get_text(), 
@@ -338,7 +337,7 @@ class CustomWindow():
 	
 	def saveProject(self, w):
 		try:
-			if project_manager.saveProject(self.core.getServerInfo()):
+			if self.project_manager.saveProject(self.launcher.getServerInfo()):
 				self.showMessageDialog("Project saved!")
 			else:
 				self.showErrorDialog("Error: Project couldn't be saved. You sure we have write permission on the file?")

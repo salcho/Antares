@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from exceptions import antaresLogException
+from controller import exceptions
 import logging
 import sys
 

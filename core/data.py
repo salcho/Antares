@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 
 from core.log import LOGGER
+import os
 import time
 
+# UI Vars
+STRESS_ITEM_FORMAT = '<span foreground="#4071DC" size="large"><b>%s</b></span>'
+BOLD_FORMAT = '<b><i>%s</i></b>'
 # Misc variables
 paths = {}
-paths['main_path'] = None
+#paths['main_path'] = os.path.dirname(os.path.realpath(__file__))
+paths['main_path'] = os.path.abspath(os.path.dirname(__file__) + os.path.sep + '..')
 paths['plugins_dir'] = '/core/plugins/'
 paths['projects_dir'] = 'projects'
 paths['log_dir'] = '/log/'
@@ -20,8 +25,8 @@ logger = LOGGER
 
 # WSDL datatypes: http://www.w3.org/TR/xmlschema-2/#built-in-datatypes
 DEFAULT_STRING_VALUE = 'antares'
-DEFAULT_BOOLEAN_VALUE = 1
-DEFAULT_DECIMAL_VALUE = 1.0
+DEFAULT_BOOLEAN_VALUE = 'true'
+DEFAULT_DECIMAL_VALUE = 1.00
 DEFAULT_FLOAT_VALUE = '-1.10e'
 DEFAULT_DOUBLE_VALUE = '-0'
 DEFAULT_DURATION_VALUE = '-P1Y1M1T1H1M'
@@ -32,7 +37,7 @@ DEFAULT_GYEARMONTH_VALUE = '1000-10'
 DEFAULT_GYEAR_VALUE = '1000'
 DEFAULT_GMONTHDAY_VALUE = '10-10'
 DEFAULT_GDAY_VALUE = '10'
-DEFAULT_GMONTH_VALUE = '1'
+DEFAULT_GMONTH_VALUE = '11'
 DEFAULT_HEXBINARY_VALUE = 'THIS_FIELD_TYPE_IS_HEXBINARY'
 DEFAULT_BASE64BINARY_VALUE = 'THIS_FIELD_TYPE_IS_BASE64BINARY'
 DEFAULT_ANYURI_VALUE = 'http://anyhost/anyURI'
@@ -41,6 +46,13 @@ DEFAULT_ANYURI_VALUE = 'http://anyhost/anyURI'
 DEFAULT_UNKNOWN_VALUE = 'UNKNOWN'
 DEFAULT_INTEGER_VALUE = 1
 DEFAULT_LONG_VALUE = 1
+
+# Authentication types
+AUTH_NONE = 0
+AUTH_BASIC = 1
+AUTH_UNKNOWN = 2
+AUTH_WINDOWS = 3
+AUTH_WSSE = 4
 
 # Regular expressions to match various stuff
 ERROR_GENERIC_REGEXP = (
@@ -56,3 +68,4 @@ ws_protocols = [('WS-Addressing','http://schemas.xmlsoap.org/ws/2004/08/addressi
 		('SOAP-1.1','http://schemas.xmlsoap.org/wsdl/soap/'), ('SOAP-1.1','http://schemas.xmlsoap.org/soap/envelope'),
 		('SOAP-1.2','http://www.w3.org/2003/05/soap-envelope'), ('SOAP-1.2','http://www.w3.org/2003/05/soap-encoding'), ('SOAP-1.2','http://www.w3.org/2003/05/soap-rpc'),
 		('SOAP-1.2','http://schemas.xmlsoap.org/wsdl/soap12'), ('WS-Addresing Metadata','http://www.w3.org/2007/05/addressing/metadata')]
+

@@ -4,7 +4,7 @@ Created on Aug 10, 2013
 @author: user
 '''
 
-from core.exceptions import antaresException
+from controller import exceptions
 from core.utils.wsresponse_object import wsResponse
 from core.data import ERROR_GENERIC_REGEXP
 from core.data import logger

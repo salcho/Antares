@@ -7,6 +7,7 @@ Created on Feb 28, 2013
 from core.plugs import fuzzdb_plugin
 from core.utils.wsresponse_object import wsResponse
 from core.data import logger
+from core.Singleton import Singleton
 import sys
 import inspect
 import threading
@@ -14,8 +15,9 @@ import Queue
 import gtk
 
 
-class PluginManager(object):
-
+class PluginManager:
+    __metaclass__ = Singleton
+    
     def __init__(self):
         logger.debug("Plugin Manager instansiated")
         

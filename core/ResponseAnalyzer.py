@@ -4,7 +4,7 @@ Created on Aug 9, 2013
 @author: salcho
 '''
 
-from core.exceptions import antaresException
+from controller import exceptions
 from core.data import logger
 from core.utils import wsresponse_object
 
@@ -18,7 +18,6 @@ class responseAnalyzer:
     '''
     This class will retrieve the last set of data produced and create series of data from them to be plotted
     '''
-
 
     def __init__(self):
         logger.debug("Analyzer object instansiated")

@@ -3,21 +3,17 @@ Created on Aug 10, 2012
 
 @author: "Santiago Diaz M."
 '''
-from core.fwCore import core
-from core.utils.project_manager import project_manager
-from core.utils.project_manager import AUTH_BASIC
-from core.utils.project_manager import AUTH_WINDOWS
-from core.utils.project_manager import AUTH_UNKNOWN
-from core.utils.project_manager import AUTH_WSSE
-from core.utils.project_manager import AUTH_NONE
-from core.exceptions import antaresException
+from core.data import AUTH_BASIC
+from core.data import AUTH_WINDOWS
+from core.data import AUTH_UNKNOWN
+from core.data import AUTH_WSSE
+from core.data import AUTH_NONE
+from core.data import STRESS_ITEM_FORMAT
+from core.data import BOLD_FORMAT
+from controller import exceptions
 from ui.IWidget import IWidget
 from bs4 import BeautifulSoup
-import gobject
-import logging
-import pygtk
 import gtk
-from gtk import gdk
 
 class cfgWidget(IWidget):
     
@@ -25,7 +21,10 @@ class cfgWidget(IWidget):
     This Widget handles the configuration tab
     '''
     
-    def __init__(self):
+    def __init__(self, wsdlhelper, pm):
+        self.project_manager = pm
+        self.wsdlhelper = wsdlhelper
+        
         IWidget.__init__(self)
         self.conf_dict = {}
         self.server_dict = {}
@@ -35,6 +34,8 @@ class cfgWidget(IWidget):
         
         self.project_frame = gtk.Frame("Project")
         self.project_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
+        self.endpoint_frame = gtk.Frame("EndPoint")
+        self.endpoint_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
         self.server_frame = gtk.Frame("Server")
         self.server_frame.set_shadow_type(gtk.SHADOW_ETCHED_OUT)
         self.auth_frame = gtk.Frame("Authentication")
@@ -50,7 +51,7 @@ class cfgWidget(IWidget):
     def start(self, conf_list, server_list):
         # Generate labels
         if not conf_list or not server_list:
-            raise antaresException("Either configuration or settings list parameters are missing for config widget")
+            raise exceptions.antaresException("Either configuration or settings list parameters are missing for config widget")
         
         # Create widgets (lables, entries, combobox, ...
         for key, value in conf_list.items():
@@ -91,6 +92,28 @@ class cfgWidget(IWidget):
             
         self.project_frame.add(table)
         
+        #EndPoint frame
+        items = {}
+        items['Service name'] = self.wsdlhelper.wsdl_desc.getServiceName()
+        items['Target namespace'] = self.wsdlhelper.wsdl_desc.getNamespace()
+        #items['Number of ports'] = str(len(self.wsdlhelper.ws_desc.getPorts()))
+        table = gtk.Table(2+len(self.wsdlhelper.wsdl_desc.getPorts()), 2, True)
+        row = 0
+        for k,v in items.items():
+            entry = gtk.Entry(0)
+            entry.set_text(v)
+            table.attach(gtk.Label(k), 0, 1, row, row+1)
+            table.attach(entry, 1, 2, row, row+1)
+            row += 1
+        
+        for port in self.wsdlhelper.wsdl_desc.getPorts():
+            table.attach(gtk.Label(port), 0, 1, row, row+1)
+            label = gtk.Label()
+            label.set_markup(BOLD_FORMAT % (str(len(self.wsdlhelper.wsdl_desc.getOperations(port=port))) + " operations"))
+            table.attach(label, 1, 2, row, row+1)
+            row += 1
+        self.endpoint_frame.add(table)
+        
         # Server frame
         table = gtk.Table(len(self.server_dict), 2, True)
         column = 0
@@ -114,54 +137,52 @@ class cfgWidget(IWidget):
         for label in labels.values():
             self.auth_combobox.append_text(label)
 
-        if not project_manager.getAuthType():
+        if not self.project_manager.getAuthType():
             self.auth_combobox.set_active(0)
         else:
-            self.auth_combobox.set_active(project_manager.getAuthType())
+            self.auth_combobox.set_active(self.project_manager.getAuthType())
         #Call the appropriate PM function with the correct constant for this type of authentication
-        self.auth_combobox.child.connect('changed', project_manager.setAuthType, self.auth_combobox.get_active())
+        self.auth_combobox.child.connect('changed', self.project_manager.setAuthType, self.auth_combobox.get_active())
 
         table.attach(self.auth_combobox, 1, 2, 0, 1)
         table.attach(gtk.Label('Domain'), 0, 1, 1, 2)
         entry = gtk.Entry(0)
-        entry.set_text(str(project_manager.getDomain()))
-        entry.connect('focus-out-event', project_manager.setDomain, entry.get_text())
+        entry.set_text(str(self.project_manager.getDomain()))
+        entry.connect('focus-out-event', self.project_manager.setDomain, entry.get_text())
         table.attach(entry, 1, 2, 1, 2)
         table.attach(gtk.Label('Username'), 0, 1, 2, 3)
         entry = gtk.Entry(0)
-        entry.set_text(str(project_manager.getUsername()))
-        entry.connect('focus-out-event', project_manager.setUsername, entry.get_text())
+        entry.set_text(str(self.project_manager.getUsername()))
+        entry.connect('focus-out-event', self.project_manager.setUsername, entry.get_text())
         table.attach(entry, 1, 2, 2, 3)
         table.attach(gtk.Label('Password'), 0, 1, 3, 4)
         entry = gtk.Entry(0)
-        entry.set_text(str(project_manager.getPassword()))
-        entry.connect('focus-out-event', self.changeAuth, project_manager.setPassword, entry.get_text())
+        entry.set_text(str(self.project_manager.getPassword()))
+        entry.connect('focus-out-event', self.changeAuth, self.project_manager.setPassword, entry.get_text())
         table.attach(entry, 1, 2, 3, 4)
         
         self.auth_frame.add(table)
         
         # Default webService service and port combobox
-        wsdl = core.iswsdlhelper()
-        if wsdl:
-            self.service_combobox = gtk.combo_box_entry_new_text()
-            self.service_combobox.append_text('')
-            for service in wsdl.getServices():
-                self.service_combobox.append_text(service)
-                self.service_combobox.child.connect('changed', self.changeService)
+        self.service_combobox = gtk.combo_box_entry_new_text()
+        self.service_combobox.append_text('')
+        for service in self.wsdlhelper.getServices():
+            self.service_combobox.append_text(service)
+            self.service_combobox.child.connect('changed', self.changeService)
         self.service_combobox.set_active(0)
         self.service_frame.add(self.service_combobox)
         
-        if wsdl:
-            self.port_combobox = gtk.combo_box_entry_new_text()
-            self.port_combobox.append_text('')
-            for bind in wsdl.getBindings():
-                self.port_combobox.append_text(bind.name)
-                self.port_combobox.child.connect('changed', self.changeBind)
+        self.port_combobox = gtk.combo_box_entry_new_text()
+        self.port_combobox.append_text('')
+        for bind in self.wsdlhelper.getBindings():
+            self.port_combobox.append_text(bind.name)
+            self.port_combobox.child.connect('changed', self.changeBind)
         self.port_combobox.set_active(0)
         self.port_frame.add(self.port_combobox)
         
         self.vbox = gtk.VBox(False, 0)
         self.vbox.pack_start(self.project_frame, True, True, 0)
+        self.vbox.pack_start(self.endpoint_frame, True, True, 0)
         self.vbox.pack_start(self.server_frame, True, True, 0)
         self.vbox.pack_start(self.auth_frame, True, True, 0)
         self.vbox.pack_start(self.service_frame, True, True, 0)
@@ -188,7 +209,7 @@ class cfgWidget(IWidget):
         sw = gtk.ScrolledWindow()
         sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         buff = gtk.TextBuffer()
-        soup = BeautifulSoup(project_manager.getWSDLContents())
+        soup = BeautifulSoup(self.project_manager.getWSDLContents())
         buff.set_text(soup.prettify())
         textview = gtk.TextView(buffer=buff)
         textview.set_editable(False)
@@ -207,17 +228,16 @@ class cfgWidget(IWidget):
         popup.show_all()
         
     def changeBind(self, entry):
-        core.iswsdlhelper().setPort(entry.get_text())
+        self.wsdlhelper.setPort(entry.get_text())
     def changeService(self, entry):
-        core.iswsdlhelper().setService(entry.get_text())
+        self.wsdlhelper.setService(entry.get_text())
     def changeAuth(self, w, event, entry, id):
             if 1 is id:
-                project_manager.setDomain(entry.get_text())
+                self.project_manager.setDomain(entry.get_text())
             elif 2 is id:
-                project_manager.setUsername(entry.get_text())
+                self.project_manager.setUsername(entry.get_text())
             elif 3 is id:
-                project_manager.setPassword(entry.get_text())
+                self.project_manager.setPassword(entry.get_text())
             elif 4 is id:
-                project_manager.setAuthType(entry)
-            print project_manager.currSettings['auth']
+                self.project_manager.setAuthType(entry)
     

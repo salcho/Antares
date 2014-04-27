@@ -8,8 +8,14 @@ from core.data import wsdl_name
 from core.data import settings_name
 from core.data import logger
 from core.data import paths
+from core.data import AUTH_BASIC
+from core.data import AUTH_NONE
+from core.data import AUTH_UNKNOWN
+from core.data import AUTH_WINDOWS
+from core.data import AUTH_WSSE
 from core.data import EXTRACT_IP_REGEX
-from core.exceptions import antaresWrongCredentialsException
+from core.Singleton import Singleton
+from controller import exceptions
 from urllib2 import HTTPError
 from urllib2 import URLError
 import os
@@ -19,16 +25,10 @@ import shutil
 import base64
 import re
 import cPickle as pickle
-from core.exceptions import antaresDependenciesException,\
-	antaresUnknownException
+from controller import exceptions
 
-AUTH_NONE = 0
-AUTH_BASIC = 1
-AUTH_UNKNOWN = 2
-AUTH_WINDOWS = 3
-AUTH_WSSE = 4
-
-class projMan:
+class ProjectManager:
+	__metaclass__ = Singleton
 	
 	def __init__(self):
 		self.proj_name = ''
@@ -187,11 +187,14 @@ class projMan:
 			self.currSettings['control']['url'] = url
 			wsdl = urllib2.urlopen(url)
 		except HTTPError as e:
-			rsp = e.headers.getheader('WWW-Authenticate').lower()
-			if 'basic' in rsp:
-				ret = AUTH_BASIC
-			elif 'negotiate' in rsp or 'ntlm' in rsp:
-				ret = AUTH_WINDOWS
+			print e.headers
+			rsp = e.headers.getheader('WWW-Authenticate')
+			if rsp:
+				rsp = rsp.lower()
+				if 'basic' in rsp:
+					ret = AUTH_BASIC
+				elif 'negotiate' in rsp or 'ntlm' in rsp:
+					ret = AUTH_WINDOWS
 			else:
 				logger.debug("Unsupported/Unknown authentication method detected: %s" % rsp )
 				ret = AUTH_UNKNOWN
@@ -304,5 +307,3 @@ class projMan:
 	
 	def getIP(self):
 		return re.findall(EXTRACT_IP_REGEX, self.currSettings['control']['url'])[0]
-		
-project_manager = projMan()		

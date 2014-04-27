@@ -5,12 +5,11 @@ Created on Jan 20, 2013
 '''
 
 from core.data import logger
-from core.exceptions import antaresUnknownException
-from core.exceptions import antaresWrongCredentialsException
-from core.utils.project_manager import project_manager
-from core.utils.project_manager import AUTH_BASIC
-from core.utils.project_manager import AUTH_WINDOWS
-from core.utils.project_manager import AUTH_UNKNOWN
+from controller import exceptions
+from core.Singleton import Singleton	
+from core.data import AUTH_BASIC
+from core.data import AUTH_WINDOWS
+from core.data import AUTH_UNKNOWN
 from core.data import ws_protocols
 from core.data import DEFAULT_ANYURI_VALUE
 from core.data import DEFAULT_BASE64BINARY_VALUE
@@ -57,20 +56,24 @@ import logging
 import socket
 import fcntl
 import struct
+from core.ProjectManager import ProjectManager	
 
 # TODO: Terminar tipos de datos!!! http://www.w3.org/TR/xmlschema-2/#built-in-datatypes
 CONTENT_TYPE_EXCEPTION = "Cannot process the message because the content type"
 MUST_UNDERSTAND = Attribute('SOAP-ENV:mustUnderstand', 'true')
 
-class WSDLHelper(object):
-
+class WSDLHelper:
+	__metaclass__ = Singleton
 
 	def __init__(self):
 		#logging.basicConfig(level=logging.DEBUG)
-		#logging.getLogger('suds.transport').setLevel(logging.DEBUG)
+		#logging.getLogger('suds.client').setLevel(logging.DEBUG)
+		self.project_manager = ProjectManager()
 		self.ws_client = None
 		# client lib, used when loading wsdl from file
 		self.server_client = None
+		# WSDL Descriptor
+		self.wsdl_desc = None
 
 		#control variables
 		self.serviceName = ''
@@ -96,42 +99,42 @@ class WSDLHelper(object):
 
 		ServiceDefinition @ client.sd
 	        ports = (port, [methods])
-        	ports = (port, [(name, [args])])
+        	ports = (port, [(name, [opers])])
 	        ports = (port, [name, [(type, name)]])
 		"""
 		try:
 			msg = ''
 			
 			# Check for protocol authentication methods
-			if project_manager.getAuthType() == AUTH_BASIC:
-				if project_manager.getUsername() and project_manager.getPassword():
+			if self.project_manager.getAuthType() == AUTH_BASIC:
+				if self.project_manager.getUsername() and self.project_manager.getPassword():
 					try:
-						self.ws_client = Client(url, username=project_manager.getUsername(), password=project_manager.getPassword(), 
+						self.ws_client = Client(url, username=self.project_manager.getUsername(), password=self.project_manager.getPassword(), 
 											faults=True, prettyxml=True, cache=None)
-						request = project_manager.createAuthorizationRequest(project_manager.getUsername(), 
-																	project_manager.getPassword(), 
-																	project_manager.getURL(),
-																	project_manager.getDomain())
+						request = self.project_manager.createAuthorizationRequest(self.project_manager.getUsername(), 
+																	self.project_manager.getPassword(), 
+																	self.project_manager.getURL(),
+																	self.project_manager.getDomain())
 						self.server_client = urllib2.urlopen(request)
 					except URLError as e:
 						try:
 							if e.code == 401:
 								msg = 'Error: Something went wrong while trying to authenticate with saved credentials -> %s' % str(e)
-								logger.error('Credentials %s:%s [Basic] for project %s stopped working' % (project_manager.getUsername(), 
-																									project_manager.getPassword(), 
-																									project_manager.getName()))
+								logger.error('Credentials %s:%s [Basic] for project %s stopped working' % (self.project_manager.getUsername(), 
+																									self.project_manager.getPassword(), 
+																									self.project_manager.getName()))
 								return msg
 						except:
 							msg = "\tWarning:\nWasn't able to connect to target.\nAntares is running in offline mode now."
-			elif project_manager.getAuthType() == AUTH_WINDOWS:
+			elif self.project_manager.getAuthType() == AUTH_WINDOWS:
 				# Can we do this?
 				try:
 					import ntlm
-					if project_manager.getUsername() and project_manager.getPassword():
-						ntlm_transport = WindowsHttpAuthenticated(username='%s\\%s' % (project_manager.getDomain(), project_manager.getUsername()), 
-														password=project_manager.getPassword())
-						self.server_client = project_manager.createNTLMRequest(project_manager.getUsername(), project_manager.getPassword(), 
-																		project_manager.getURL(), project_manager.getDomain())
+					if self.project_manager.getUsername() and self.project_manager.getPassword():
+						ntlm_transport = WindowsHttpAuthenticated(username='%s\\%s' % (self.project_manager.getDomain(), self.project_manager.getUsername()), 
+														password=self.project_manager.getPassword())
+						self.server_client = self.project_manager.createNTLMRequest(self.project_manager.getUsername(), self.project_manager.getPassword(), 
+																		self.project_manager.getURL(), self.project_manager.getDomain())
 						self.ws_client = Client(url, transport=ntlm_transport, faults=True, prettyxml=True, cache=None)
 				except ImportError:
 					msg = "Error: The project you're trying to load uses Windows authentication\n"
@@ -141,29 +144,30 @@ class WSDLHelper(object):
 				
 				except (antaresWrongCredentialsException, TransportError) as e:
 					msg = 'Error: Something went wrong while trying to authenticate with saved credentials -> %s' % str(e) 
-					logger.error('Credentials %s:%s [NTLM] for project %s stopped working' % (project_manager.getUsername(), 
-																						project_manager.getPassword(), 
-																						project_manager.getName()))
+					logger.error('Credentials %s:%s [NTLM] for project %s stopped working' % (self.project_manager.getUsername(), 
+																						self.project_manager.getPassword(), 
+																						self.project_manager.getName()))
 					return msg
 
 			else:
-				if project_manager.getAuthType() == AUTH_UNKNOWN:
+				if self.project_manager.getAuthType() == AUTH_UNKNOWN:
 					msg = "Warning: Antares detected an unknown protocol mechanism for this EndPoint!\n"
 					msg = "We probably won't be able to connect to the service."
 				
 				# Or fallback to regular connections
 				self.ws_client = Client(url, faults=True, prettyxml=True, cache=None)
-				self.server_client = urllib2.urlopen(project_manager.getURL())
+				self.server_client = urllib2.urlopen(self.project_manager.getURL())
 			
 			self.setup()
 			
 			if self.ws_client:
+				self.wsdl_desc = WSDLDescription(self.ws_client.sd[0])
 				msg = 'OK'
 				logger.info("WSDL helper is:\n %s" % self.ws_client)
 			if url.startswith('file'):
-				logger.info("Loaded wsdl from local path %s" % project_manager.getWSDLPath())
+				logger.info("Loaded wsdl from local path %s" % self.project_manager.getWSDLPath())
 			else:
-				logger.info("Loaded wsdl from remote path %s" % project_manager.getURL())
+				logger.info("Loaded wsdl from remote path %s" % self.project_manager.getURL())
 		except exceptions.ValueError:
 			msg = "Error: Malformed URL\n" + url
 		except URLError:
@@ -177,9 +181,9 @@ class WSDLHelper(object):
 			msg += "\nReference is: https://fedorahosted.org/suds/wiki/TipsAndTricks#Schema-TypeNotFound"
 		except TransportError as e:
 			msg = 'Error: Something went wrong while trying to authenticate with saved credentials'
-			logger.error('Credentials %s:%s for project %s stopped working' % (project_manager.getUsername(), 
-																						project_manager.getPassword(), 
-																						project_manager.getName()))
+			logger.error('Credentials %s:%s for project %s stopped working' % (self.project_manager.getUsername(), 
+																						self.project_manager.getPassword(), 
+																						self.project_manager.getName()))
 		except Exception as e:
 			msg = 'FATAL: unmanaged exception. Check stderr : ' + e.message
 			print e.__dict__
@@ -243,18 +247,114 @@ class WSDLHelper(object):
 			
 		return ret
 
-	def findEnumerations(self, type):
+	def findEnumerations(self, type, recur=False):
 		"""
 		This function receives an element type (That is: type[0] -> name, type[1] -> namespace)
 		It will find if it corresponds to enumeration values and return all possible values
-		This function could work as a generic factory in the future, but that's to be seen
+		If recur is True the object is nested inside other complex param 
 		"""
 		
-		ret = set()
-		category = self.ws_client.factory.create('{' + type[1] + '}' + type[0])
-		for key in category.__keylist__:
-			ret.add(key)
+		cmplx = '{%s}%s' % (type[1], type[0])
+		elem = self.ws_client.factory.resolver.find(cmplx)
+		xml = self.ws_client.factory.create(cmplx)
+		args = [arg[0] for arg in elem.children()]
+		
+		# This could be just an enumeration
+		if elem.enum():
+			return dict(xml).keys()
+		
+		for arg in xml.__keylist__:
+			items = getattr(xml, arg)
+			if not items:
+				for x in args:
+					if x.name == arg:
+						xml[arg] = x.type[0]
+						break
+			else:
+				for k in items.__keylist__:
+					xml[arg][k] = '1'
+					
+		ret = dict(xml)
+		return dict(ret)	
+		"""			
+			 
+		
+			
+		
+		elem = self.ws_client.factory.resolver.find(cmplx)
+		if recur:
+			items = elem.attributes()
+			at = self.ws_client.factory.create(cmplx)
+		else:
+			items = elem.children()
+			
+		for child in items:
+			# This can be element or complex object
+			obj = child[0]
+			
+			if obj.type[1] == schema:
+				ret[obj.name] = obj.type[0]
+			else:
+				ret[obj.name] = {}
+				ns = str(obj.namespace()[1])
+				name = obj.type[0]
+				print (ns, name)
+				arg = self.ws_client.factory.create('{%s}%s' % (ns, name))
+				#vals = self.findEnumerations((name, ns), recur=True)
+				ret[obj.name][name] = dict(arg)
+		print ret
 		return ret
+		"""
+	
+	def findSimpleTypes(self, elem):
+		# XML Schema for comparison
+		for t in ws_protocols:
+			if t[0] == 'XML Schema':
+				schema = t[1]	
+				break
+			
+		if str(elem.type[0]) == 'string':
+			return DEFAULT_STRING_VALUE
+		elif str(elem.type[0]) == 'duration':
+			return DEFAULT_DURATION_VALUE
+		elif str(elem.type[0]) == 'dateTime':
+			return DEFAULT_DATETIME_VALUE
+		elif str(elem.type[0]) == 'time':
+			return DEFAULT_TIME_VALUE
+		elif str(elem.type[0]) == 'date':
+			return DEFAULT_DATE_VALUE
+		elif str(elem.type[0]) == 'gYearMonth':
+			return DEFAULT_GYEARMONTH_VALUE
+		elif str(elem.type[0]) == 'gYear':
+			return DEFAULT_GYEAR_VALUE
+		elif str(elem.type[0]) == 'gMonthDay':
+			return DEFAULT_GMONTHDAY_VALUE
+		elif str(elem.type[0]) == 'gDay':
+			return DEFAULT_GDAY_VALUE
+		elif str(elem.type[0]) == 'gMonth':
+			return DEFAULT_GMONTH_VALUE
+		elif str(elem.type[0]) == 'boolean':
+			return DEFAULT_BOOLEAN_VALUE
+		elif str(elem.type[0]) == 'base64Binary':
+			return DEFAULT_BASE64BINARY_VALUE
+		elif str(elem.type[0]) == 'hexBinary':
+			return DEFAULT_HEXBINARY_VALUE
+		elif str(elem.type[0]) == 'float':
+			return DEFAULT_FLOAT_VALUE
+		elif str(elem.type[0]) == 'decimal':
+			return DEFAULT_DECIMAL_VALUE
+		elif str(elem.type[0]) == 'int':
+			return DEFAULT_INTEGER_VALUE
+		elif str(elem.type[0]) == 'long':
+			return DEFAULT_LONG_VALUE
+		elif str(elem.type[0]) == 'double':
+			return DEFAULT_DOUBLE_VALUE
+		elif str(elem.type[0]) == 'anyURI':
+			return DEFAULT_ANYURI_VALUE
+		elif elem.type[1] == schema:
+			return elem.type[0]
+		else:
+			return None
 
 	def sendRaw(self, opName, xml):
 		"""
@@ -291,7 +391,8 @@ class WSDLHelper(object):
 		# suds client class may just raise a regular Exception to tell us of HTTP code 401	
 		except Exception as e:
 			txt = self.processException(e)
-			ret = (txt, self.ws_client.messages['rx'])
+			ret = (self.ws_client.messages['tx'], 'This is an unsual error. Copy the HTTP packet for this request and investigate using a regular client')
+			return ret
 		return ret 
 
 	def addAddressing(self, opName):
@@ -337,9 +438,10 @@ class WSDLHelper(object):
 				logger.error("Got HTTP code 404, Not Found! Removed??")
 				txt = "Got a 404 Not Found HTTP packet. \nThe EndPoint might have changed it's location.\n\nCheck URL!"
 			else:
-				print except_obj.__dict__
-				print type(except_obj)
-				logger.error("Unknown exception at processException. Data is: %s" % except_obj.__dict__)
+				#print except_obj.__dict__
+				#print type(except_obj)
+				logger.error("Unknown exception at processException. Data is: %s" % except_obj.message)
+				
 			return txt
 		except:
 			pass
@@ -417,29 +519,17 @@ class WSDLHelper(object):
 		try:
 			for name, elem in self.getParams(opName):
 				# Simple types
-				if str(elem.type[0]) == 'string':
-					tosend[name] = DEFAULT_STRING_VALUE
-				elif str(elem.type[0]) == 'decimal':
-					tosend[name] = DEFAULT_DECIMAL_VALUE
-				elif str(elem.type[0]) == 'int':
-					tosend[name] = DEFAULT_INTEGER_VALUE
-				elif str(elem.type[0]) == 'boolean':
-					tosend[name] = DEFAULT_BOOLEAN_VALUE
-				elif str(elem.type[0]) == 'long':
-					tosend[name] = DEFAULT_LONG_VALUE
-				# TODO: Please set a proper date. You should be ashamed
-				elif str(elem.type[0]) == 'date':
-					tosend[name] = DEFAULT_DATE_VALUE
+				simple = self.findSimpleTypes(elem)
+				if simple:
+					tosend[name] = simple
 				# Complex types
 				else:
 					enums = self.findEnumerations(elem.type)
 					if len(enums) > 0:
-						tosend[name] = ''
-						for enum in enums:
-							tosend[name] += enum + '|'
-				
+						tosend[name] = enums
 		except Exception as e:
 			tosend = {}
+			print e.message
 			raise antaresUnknownException("getParamObjs got unknown exception: " + e.message)
 		return tosend
 	
@@ -455,16 +545,46 @@ class WSDLHelper(object):
 						return args
 		return None
 	
-	def getParamsSchema(self, opName):
+	def getParamsSchema(self, opName=None, obj=None):
 		"""
 		Return parameter's schema for selected op
+		# TODO: This algorithm must be recursive
 		"""
-
-		ret = []
-		for name, elem in self.getParams(opName):
-			if elem.type[1] and elem.type[0]:
-				ret.append(self.ws_client.factory.resolver.find('{' + elem.type[1] + '}' + elem.type[0]))
+		ret = {}
+		if opName:
+			for name, elem in self.getParams(opName):
+				if elem.type[1] and elem.type[0]:
+					type = self.ws_client.factory.resolver.find('{' + elem.type[1] + '}' + elem.type[0])
+					if not type.children():
+						ret[name] = elem.type[0]
+					else:
+						ret[name] = self.getParamsSchema(obj=elem)
+		else:
+			type = self.ws_client.factory.resolver.find('{' + obj.type[1] + '}' + obj.type[0])
+			# Check if this may be an enumeration
+			if type.enum():
+				type = self.ws_client.factory.create('{%s}%s' % (obj.type[1], obj.type[0]))
+				ret[obj.type[0]] = '/'.join(type.__keylist__)
+			else:
+				for child in type.children():
+					ret[child[0].name] = child[0].type[0]
+					
 		return ret
+	
+	def getElement(self, oper, param, cmplx=None):
+		"""
+		Get an element. If cmplx is not none get an input's element which is part of a complx object
+		"""	
+		for name, elem in self.getParams(oper):
+			if name is param or name is cmplx:
+				if cmplx:
+					obj = self.ws_client.factory.resolver.find('{' + elem.type[1] + '}' + elem.type[0])
+					for child in obj.children():
+						if child[0].name is param:
+							return child[0]
+				else:
+					return elem
+		return None
 	
 	def getParamsNames(self, opName):
 		"""
@@ -495,7 +615,7 @@ class WSDLHelper(object):
 		"""
 		try:
 			if self.is_offline:
-				return project_manager.currSettings['server'] 
+				return self.project_manager.currSettings['server'] 
 			else:
 				return self.server_client.headers.dict
 		except:
@@ -531,4 +651,59 @@ class WSDLHelper(object):
 	def is_offline(self):
 		return self.is_offline
 
-wsdlhelper = WSDLHelper()
+class WSDLDescription:
+	
+	def __init__(self, sd):
+		# Service name
+		self.name = sd.service.name
+		# Target namespace
+		self.ns = sd.wsdl.tns[1]
+		# All operations per port
+		self.port_ops = {}
+		# All arguments
+		self.opers = {}
+		for i in range(len(sd.service.ports)):
+			p = sd.service.ports[i]
+			m = sd.ports[i]
+			self.port_ops[p.name] = [x[0] for x in m[1]]
+			for oper in m[1]:
+				self.opers[oper[0]] = oper[1]
+
+	def getServiceName(self):
+		return self.name
+	
+	def getNamespace(self):
+		return self.ns
+	
+	def getPorts(self):
+		return self.port_ops.keys()
+	
+	def getOperations(self, port=None):
+		if port:
+			return self.port_ops[port]
+		return self.port_ops
+	
+	def getOperationArguments(self, oper=None):
+		if oper:
+			return self.opers[oper]
+		return self.opers
+	
+	def getArgumentType(self, oper=None, arg=None):
+		if oper:
+			for x in self.opers[oper]:
+				if x[0] == arg:
+					return x[1].type
+		return None
+	
+	def txt(self):
+		txt = 'Service name: %s' % self.name
+		txt += 'TNS: %s' % self.ns
+		for p in self.getPorts():
+			txt += 'Port: %s' % p
+			txt += 'Operations:\n'
+			for op in self.getOperations(p):
+				txt += '\tName: %s' % op
+				txt += '\t\tArgs:'
+				for arg in self.getOperationArguments(op):
+					txt += '\t\t%s:%s' % (arg, self.getArgumentType(op, arg))
+		return txt

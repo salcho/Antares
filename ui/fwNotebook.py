@@ -20,10 +20,11 @@ ANALYZE_TAB = 4
 
 class mainNotebook(gtk.Notebook):
     
-    def __init__(self):
+    def __init__(self, launcher):
         self.conf = None
         self.notebook = None
         self.tabs = []
+        self.launcher = launcher
         #self.notebook = gtk.Notebook()
         #self.notebook.set_tab_pos(gtk.POS_BOTTOM)
         #self.notebook.set_scrollable(scrollable=True)
@@ -33,27 +34,27 @@ class mainNotebook(gtk.Notebook):
         self.notebook = gtk.Notebook()
         self.notebook.set_tab_pos(gtk.POS_BOTTOM)
         #Settings wdgt
-        conf = cfgWidget()
+        conf = cfgWidget(self.launcher.wsdlhelper, self.launcher.proj_manager)
         conf.start(proj, server)
         self.tabs.append(conf)
         self.notebook.append_page(conf.getWidget(), gtk.Label('Settings'))
         #Test wdgt
-        testwgt = TestRequestWidget()
+        testwgt = TestRequestWidget(self.launcher.wsdlhelper, self.launcher.proj_manager)
         testwgt.start()
         self.tabs.append(testwgt)
         self.notebook.append_page(testwgt.getWidget(), gtk.Label('Replay'))
         #XSD wdgt
-        xsdwgt = xsdWidget()
+        xsdwgt = xsdWidget(self.launcher.wsdlhelper)
         xsdwgt.start()
         self.tabs.append(xsdwgt)
         self.notebook.append_page(xsdwgt.getWidget(), gtk.Label('XSD reader'))
         #Inject wdgt
-        injwgt = injWidget()
+        injwgt = injWidget(self.launcher.wsdlhelper, self.launcher.plugin_manager, self.launcher.callUI)
         injwgt.start()
         self.tabs.append(injwgt)
         self.notebook.append_page(injwgt.getWidget(), gtk.Label('Injector'))
         #Analyze wdgt
-        anawgt = analyzeWidget()
+        anawgt = analyzeWidget(self.launcher.analyzer)
         anawgt.start()
         self.tabs.append(anawgt)
         self.notebook.append_page(anawgt.getWidget(), gtk.Label('Analyzer'))
