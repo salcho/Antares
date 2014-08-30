@@ -6,6 +6,7 @@
 
 from ui.main import mainUI
 from core import dependencies
+dependencies.checkDependencies()
 from core.fwCore import Core
 from core.Singleton import Singleton
 from core.ProjectManager import ProjectManager
@@ -31,7 +32,6 @@ class Launcher:
 	__metaclass__ = Singleton
 		
 	def __init__(self):
-			dependencies.checkDependencies()
 			self.gui = mainUI()
 			self.main()
 	
